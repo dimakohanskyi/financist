@@ -1,0 +1,9 @@
+type Account {
+  id: ID!
+  name: String!
+  balance: Float!
+}
+
+extend type Query {
+  account(id: ID!): Account
+}
