@@ -1,9 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
+
+	_ "modernc.org/sqlite"
+
+	financistdb "github.com/dimakohanskyi/financist/internal/db"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -18,14 +23,31 @@ import (
 
 func main() {
 
-	godotenv.Load()
+	if error := godotenv.Load(); error != nil {
+		log.Fatal("failed to load envs")
+	}
+
 	logLevel := os.Getenv("LOG_LEVEL")
 
 	if logLevel == "" {
 		log.Fatal("log level not configured")
 	}
 
-	configs.LogerSetUp(logLevel)
+	if error := configs.LogerSetUp(logLevel); error != nil {
+		log.Fatal("failed to set up logger")
+	}
+
+	dbConnection, err := sql.Open("sqlite", "financist.db")
+	if err != nil {
+		log.Fatal("application couldn't create or connect to db")
+	}
+	if error := dbConnection.Ping(); error != nil {
+		log.Fatal("DB is not created or accessible")
+	}
+
+	if error := financistdb.RunMigrations(dbConnection); error != nil {
+		log.Fatal("application couldn't run migrations")
+	}
 
 	gqlPort := os.Getenv("GQL_API_PORT")
 	if gqlPort == "" {
