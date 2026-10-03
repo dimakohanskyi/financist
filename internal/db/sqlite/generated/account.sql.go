@@ -9,6 +9,36 @@ import (
 	"context"
 )
 
+const createAccount = `-- name: CreateAccount :one
+INSERT INTO accounts (
+    name, 
+    account_type, 
+    currency
+) VALUES (
+    ?, ?, ?
+)
+RETURNING id, name, account_type, currency, is_archived
+`
+
+type CreateAccountParams struct {
+	Name        string
+	AccountType string
+	Currency    string
+}
+
+func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
+	row := q.db.QueryRowContext(ctx, createAccount, arg.Name, arg.AccountType, arg.Currency)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.AccountType,
+		&i.Currency,
+		&i.IsArchived,
+	)
+	return i, err
+}
+
 const getAccount = `-- name: GetAccount :one
 SELECT id, name, account_type, currency, is_archived FROM accounts WHERE id = ? LIMIT 1
 `

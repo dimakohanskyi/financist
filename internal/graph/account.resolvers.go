@@ -8,9 +8,32 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strconv"
 
+	sqlitedb "github.com/dimakohanskyi/financist/internal/db/sqlite/generated"
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 )
+
+// CreateAccount is the resolver for the createAccount field.
+func (r *mutationResolver) CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error) {
+	params := sqlitedb.CreateAccountParams{
+		Name:        input.Name,
+		AccountType: string(input.AccountType),
+		Currency:    string(input.Currency),
+	}
+
+	acc, err := r.DB.CreateAccount(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return &model.Account{
+		ID:          strconv.FormatInt(acc.ID, 10),
+		Name:        acc.Name,
+		AccountType: model.AccountType(acc.AccountType),
+		Currency:    model.Currency(acc.Currency),
+		IsArchived:  acc.IsArchived.Bool,
+	}, nil
+}
 
 // Account is the resolver for the account field.
 func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account, error) {

@@ -1,3 +1,5 @@
 type Query {
   ping: String!
 }
+
+type Mutation

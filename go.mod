@@ -5,7 +5,9 @@ go 1.27.1
 require (
 	github.com/99designs/gqlgen v0.17.95
 	github.com/joho/godotenv v1.5.1
+	github.com/pressly/goose/v3 v3.28.0
 	github.com/vektah/gqlparser/v2 v2.5.37
+	modernc.org/sqlite v1.59.0
 )
 
 require (
@@ -19,7 +21,6 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/pressly/goose/v3 v3.28.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
@@ -33,7 +34,6 @@ require (
 	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.59.0 // indirect
 )
 
 tool github.com/99designs/gqlgen
