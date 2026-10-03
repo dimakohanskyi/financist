@@ -1,9 +1,37 @@
+enum AccountType {
+  checking
+  savings
+  credit_card
+  cash
+  investment
+  other
+}
+
+enum Currency {
+  USD
+  NOK
+  UAH
+  EUR
+}
+
 type Account {
   id: ID!
   name: String!
-  balance: Float!
+  accountType: AccountType!
+  currency: Currency!
+  isArchived: Boolean!
 }
 
 extend type Query {
   account(id: ID!): Account
+}
+
+input CreateAccountInput {
+  name: String!
+  accountType: AccountType!
+  currency: Currency!
+}
+
+extend type Mutation {
+  createAccount(input: CreateAccountInput!): Account!
 }

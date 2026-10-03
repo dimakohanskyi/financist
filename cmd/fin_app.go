@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	_ "modernc.org/sqlite"
-
 	financistdb "github.com/dimakohanskyi/financist/internal/db"
+	sqlitedb "github.com/dimakohanskyi/financist/internal/db/sqlite/generated"
+	_ "modernc.org/sqlite"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -54,8 +54,7 @@ func main() {
 		gqlPort = "8080"
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
-
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: sqlitedb.New(dbConnection)}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})

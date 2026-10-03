@@ -2,11 +2,151 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
 type Account struct {
-	ID      string  `json:"id"`
-	Name    string  `json:"name"`
-	Balance float64 `json:"balance"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	AccountType AccountType `json:"accountType"`
+	Currency    Currency    `json:"currency"`
+	IsArchived  bool        `json:"isArchived"`
+}
+
+type CreateAccountInput struct {
+	Name        string      `json:"name"`
+	AccountType AccountType `json:"accountType"`
+	Currency    Currency    `json:"currency"`
+}
+
+type Mutation struct {
 }
 
 type Query struct {
+}
+
+type AccountType string
+
+const (
+	AccountTypeChecking   AccountType = "checking"
+	AccountTypeSavings    AccountType = "savings"
+	AccountTypeCreditCard AccountType = "credit_card"
+	AccountTypeCash       AccountType = "cash"
+	AccountTypeInvestment AccountType = "investment"
+	AccountTypeOther      AccountType = "other"
+)
+
+var AllAccountType = []AccountType{
+	AccountTypeChecking,
+	AccountTypeSavings,
+	AccountTypeCreditCard,
+	AccountTypeCash,
+	AccountTypeInvestment,
+	AccountTypeOther,
+}
+
+func (e AccountType) IsValid() bool {
+	switch e {
+	case AccountTypeChecking, AccountTypeSavings, AccountTypeCreditCard, AccountTypeCash, AccountTypeInvestment, AccountTypeOther:
+		return true
+	}
+	return false
+}
+
+func (e AccountType) String() string {
+	return string(e)
+}
+
+func (e *AccountType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccountType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccountType", str)
+	}
+	return nil
+}
+
+func (e AccountType) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AccountType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AccountType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type Currency string
+
+const (
+	CurrencyUsd Currency = "USD"
+	CurrencyNok Currency = "NOK"
+	CurrencyUah Currency = "UAH"
+	CurrencyEur Currency = "EUR"
+)
+
+var AllCurrency = []Currency{
+	CurrencyUsd,
+	CurrencyNok,
+	CurrencyUah,
+	CurrencyEur,
+}
+
+func (e Currency) IsValid() bool {
+	switch e {
+	case CurrencyUsd, CurrencyNok, CurrencyUah, CurrencyEur:
+		return true
+	}
+	return false
+}
+
+func (e Currency) String() string {
+	return string(e)
+}
+
+func (e *Currency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Currency(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Currency", str)
+	}
+	return nil
+}
+
+func (e Currency) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Currency) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
