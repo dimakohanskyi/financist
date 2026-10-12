@@ -33,3 +33,33 @@ func (r *AccountRepo) List(ctx context.Context, includeArchived bool) ([]Account
 	}
 	return q.Find(ctx)
 }
+
+// AccountUpdate holds the fields to change; nil means "leave as is".
+type AccountUpdate struct {
+	Name        *string
+	AccountType *string
+	Currency    *string
+	IsArchived  *bool
+}
+
+func (r *AccountRepo) Update(ctx context.Context, id int64, u AccountUpdate) (Account, error) {
+	fields := map[string]any{}
+	if u.Name != nil {
+		fields["name"] = *u.Name
+	}
+	if u.AccountType != nil {
+		fields["account_type"] = *u.AccountType
+	}
+	if u.Currency != nil {
+		fields["currency"] = *u.Currency
+	}
+	if u.IsArchived != nil {
+		fields["is_archived"] = *u.IsArchived
+	}
+	if len(fields) > 0 {
+		if err := r.db.WithContext(ctx).Model(&Account{}).Where("id = ?", id).Updates(fields).Error; err != nil {
+			return Account{}, err
+		}
+	}
+	return r.GetByID(ctx, id)
+}
