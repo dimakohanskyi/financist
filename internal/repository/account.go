@@ -25,3 +25,11 @@ func (r *AccountRepo) Create(ctx context.Context, a *Account) error {
 func (r *AccountRepo) GetByID(ctx context.Context, id int64) (Account, error) {
 	return gorm.G[Account](r.db).Where("id = ?", id).First(ctx)
 }
+
+func (r *AccountRepo) List(ctx context.Context, includeArchived bool) ([]Account, error) {
+	q := gorm.G[Account](r.db).Order("id")
+	if !includeArchived {
+		q = q.Where("is_archived = ?", false)
+	}
+	return q.Find(ctx)
+}

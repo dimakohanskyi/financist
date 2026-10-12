@@ -55,7 +55,7 @@ func main() {
 		gqlPort = "8080"
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Accounts: repository.NewAccountRepo(gormDB)}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{AccountRepo: repository.NewAccountRepo(gormDB)}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})

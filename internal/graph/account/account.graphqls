@@ -24,6 +24,7 @@ type Account {
 
 extend type Query {
   account(id: ID!): Account
+  accounts(includeArchived: Boolean = false): [Account!]!
 }
 
 input CreateAccountInput {

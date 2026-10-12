@@ -22,7 +22,7 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input model.Create
 		AccountType: string(input.AccountType),
 		Currency:    string(input.Currency),
 	}
-	if err := r.Accounts.Create(ctx, acc); err != nil {
+	if err := r.AccountRepo.Create(ctx, acc); err != nil {
 		return nil, err
 	}
 	return toAccount(acc), nil
@@ -34,7 +34,7 @@ func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account,
 	if err != nil {
 		return nil, err
 	}
-	acc, err := r.Accounts.GetByID(ctx, n)
+	acc, err := r.AccountRepo.GetByID(ctx, n)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil // account is nullable in the schema
 	}
@@ -44,12 +44,15 @@ func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account,
 	return toAccount(&acc), nil
 }
 
-func toAccount(a *repository.Account) *model.Account {
-	return &model.Account{
-		ID:          strconv.FormatInt(a.ID, 10),
-		Name:        a.Name,
-		AccountType: model.AccountType(a.AccountType),
-		Currency:    model.Currency(a.Currency),
-		IsArchived:  a.IsArchived,
+// Accounts is the resolver for the accounts field.
+func (r *queryResolver) Accounts(ctx context.Context, includeArchived *bool) ([]*model.Account, error) {
+	accs, err := r.AccountRepo.List(ctx, includeArchived != nil && *includeArchived)
+	if err != nil {
+		return nil, err
 	}
+	out := make([]*model.Account, len(accs))
+	for i := range accs {
+		out[i] = toAccount(&accs[i])
+	}
+	return out, nil
 }
