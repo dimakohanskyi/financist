@@ -10,5 +10,5 @@ import "github.com/dimakohanskyi/financist/internal/repository"
 // here.
 
 type Resolver struct {
-	Accounts *repository.AccountRepo
+	AccountRepo *repository.AccountRepo
 }

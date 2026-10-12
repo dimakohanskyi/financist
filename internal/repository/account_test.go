@@ -41,3 +41,20 @@ func TestGetByID(t *testing.T) {
 		t.Fatalf("got %+v, err %v", got, err)
 	}
 }
+
+func TestList(t *testing.T) {
+	r := newTestRepo(t)
+	ctx := context.Background()
+	for _, a := range []*Account{
+		{Name: "Active", AccountType: "cash", Currency: "USD"},
+		{Name: "Old", AccountType: "cash", Currency: "USD", IsArchived: true},
+	} {
+		if err := r.Create(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := r.List(ctx, false)
+	if err != nil || len(got) != 1 || got[0].Name != "Active" {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+}
