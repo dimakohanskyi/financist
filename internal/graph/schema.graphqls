@@ -1,3 +1,5 @@
+scalar Int64
+scalar Time
 type Query {
   ping: String!
 }

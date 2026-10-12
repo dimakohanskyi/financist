@@ -1,0 +1,53 @@
+enum TransactionType {
+  income
+  expense
+  transfer
+}
+
+type Transaction {
+  id: ID!
+  accountId: ID!
+  toAccountId: ID
+  type: TransactionType!
+  "Minor units (cents), always positive"
+  amount: Int64!
+  description: String!
+  date: Time!
+}
+
+input CreateTransactionInput {
+  accountId: ID!
+  "Only for transfers"
+  toAccountId: ID
+  type: TransactionType!
+  amount: Int64!
+  description: String = ""
+  date: Time!
+}
+
+"Omitted fields are left unchanged. Changing type away from transfer clears toAccountId"
+input UpdateTransactionInput {
+  accountId: ID
+  toAccountId: ID
+  type: TransactionType
+  amount: Int64
+  description: String
+  date: Time
+}
+
+extend type Mutation {
+  createTransaction(input: CreateTransactionInput!): Transaction!
+  updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
+}
+
+type TransactionPage {
+  items: [Transaction!]!
+  "Number of matches across all pages"
+  total: Int!
+}
+
+extend type Query {
+  transaction(id: ID!): Transaction
+  "Newest first. Transfers show up for both accounts. limit defaults to 50, max 200"
+  transactions(accountId: ID, limit: Int = 50, offset: Int = 0): TransactionPage!
+}
