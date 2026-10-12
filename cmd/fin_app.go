@@ -7,6 +7,7 @@ import (
 
 	financistdb "github.com/dimakohanskyi/financist/internal/db"
 	"github.com/dimakohanskyi/financist/internal/repository"
+	"github.com/dimakohanskyi/financist/internal/service"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
@@ -37,7 +38,7 @@ func main() {
 		log.Fatal("failed to set up logger")
 	}
 
-	gormDB, err := gorm.Open(sqlite.Open("financist.db"), &gorm.Config{})
+	gormDB, err := gorm.Open(sqlite.Open("financist.db?_pragma=foreign_keys(1)"), &gorm.Config{})
 	if err != nil {
 		log.Fatal("application couldn't create or connect to db")
 	}
@@ -55,7 +56,9 @@ func main() {
 		gqlPort = "8080"
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{AccountRepo: repository.NewAccountRepo(gormDB)}}))
+	accountRepo := repository.NewAccountRepo(gormDB)
+
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{AccountRepo: accountRepo, TxService: service.NewTransactionService(repository.NewTransactionRepo(gormDB), accountRepo)}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
