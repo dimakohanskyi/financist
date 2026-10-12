@@ -29,6 +29,13 @@ type Mutation struct {
 type Query struct {
 }
 
+type UpdateAccountInput struct {
+	Name        *string      `json:"name,omitempty"`
+	AccountType *AccountType `json:"accountType,omitempty"`
+	Currency    *Currency    `json:"currency,omitempty"`
+	IsArchived  *bool        `json:"isArchived,omitempty"`
+}
+
 type AccountType string
 
 const (

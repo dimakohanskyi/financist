@@ -11,13 +11,13 @@ import (
 	"strconv"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
-	"github.com/dimakohanskyi/financist/internal/repository"
+	domain "github.com/dimakohanskyi/financist/internal/model"
 	"gorm.io/gorm"
 )
 
 // CreateAccount is the resolver for the createAccount field.
 func (r *mutationResolver) CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error) {
-	acc := &repository.Account{
+	acc := &domain.Account{
 		Name:        input.Name,
 		AccountType: string(input.AccountType),
 		Currency:    string(input.Currency),
@@ -26,6 +26,37 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input model.Create
 		return nil, err
 	}
 	return toAccount(acc), nil
+}
+
+// UpdateAccount is the resolver for the updateAccount field.
+func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input model.UpdateAccountInput) (*model.Account, error) {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	u := domain.AccountUpdate{Name: input.Name, IsArchived: input.IsArchived}
+	if input.AccountType != nil {
+		v := string(*input.AccountType)
+		u.AccountType = &v
+	}
+	if input.Currency != nil {
+		v := string(*input.Currency)
+		u.Currency = &v
+	}
+	acc, err := r.AccountRepo.Update(ctx, n, u)
+	if err != nil {
+		return nil, err
+	}
+	return toAccount(&acc), nil
+}
+
+// DeleteAccount is the resolver for the deleteAccount field.
+func (r *mutationResolver) DeleteAccount(ctx context.Context, id string) (bool, error) {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return false, err
+	}
+	return true, r.AccountRepo.Archive(ctx, n)
 }
 
 // Account is the resolver for the account field.

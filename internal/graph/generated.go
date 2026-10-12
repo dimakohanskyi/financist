@@ -47,6 +47,8 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateAccount func(childComplexity int, input model.CreateAccountInput) int
+		DeleteAccount func(childComplexity int, id string) int
+		UpdateAccount func(childComplexity int, id string, input model.UpdateAccountInput) int
 	}
 
 	Query struct {
@@ -62,6 +64,8 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error)
+	UpdateAccount(ctx context.Context, id string, input model.UpdateAccountInput) (*model.Account, error)
+	DeleteAccount(ctx context.Context, id string) (bool, error)
 }
 type QueryResolver interface {
 	Ping(ctx context.Context) (string, error)
@@ -129,6 +133,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateAccount(childComplexity, args["input"].(model.CreateAccountInput)), true
+	case "Mutation.deleteAccount":
+		if e.ComplexityRoot.Mutation.DeleteAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteAccount(childComplexity, args["id"].(string)), true
+	case "Mutation.updateAccount":
+		if e.ComplexityRoot.Mutation.UpdateAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateAccount(childComplexity, args["id"].(string), args["input"].(model.UpdateAccountInput)), true
 
 	case "Query.account":
 		if e.ComplexityRoot.Query.Account == nil {
@@ -169,6 +195,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateAccountInput,
+		ec.unmarshalInputUpdateAccountInput,
 	)
 	first := true
 
@@ -407,6 +434,42 @@ func (ec *executionContext) field_Mutation_createAccount_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateAccountInput, error) {
+			return ec.unmarshalNUpdateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAccountInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -665,6 +728,94 @@ func (ec *executionContext) fieldContext_Mutation_createAccount(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateAccount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateAccount(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateAccountInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Account) graphql.Marshaler {
+			return ec.marshalNAccount2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAccount(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Account(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteAccount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteAccount(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -1961,6 +2112,57 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context, obj any) (model.UpdateAccountInput, error) {
+	var it model.UpdateAccountInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "accountType", "currency", "isArchived"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "accountType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountType"))
+			data, err := ec.unmarshalOAccountType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAccountType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountType = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOCurrency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "isArchived":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isArchived"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsArchived = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2050,6 +2252,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createAccount":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteAccount(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -2687,6 +2903,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) unmarshalNUpdateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAccountInput(ctx context.Context, v any) (model.UpdateAccountInput, error) {
+	res, err := ec.unmarshalInputUpdateAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
 	return ec.___Directive(ctx, sel, &v)
 }
@@ -2834,6 +3055,22 @@ func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋdimakohanskyiᚋfi
 	return ec._Account(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOAccountType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAccountType(ctx context.Context, v any) (*model.AccountType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.AccountType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAccountType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAccountType(ctx context.Context, sel ast.SelectionSet, v *model.AccountType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -2862,6 +3099,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOCurrency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx context.Context, v any) (*model.Currency, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.Currency)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCurrency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx context.Context, sel ast.SelectionSet, v *model.Currency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {
