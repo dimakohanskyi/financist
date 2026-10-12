@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dimakohanskyi/financist/internal/model"
 	"gorm.io/gorm"
@@ -37,6 +38,9 @@ func (r *AccountRepo) Create(ctx context.Context, a *model.Account) error {
 
 func (r *AccountRepo) GetByID(ctx context.Context, id int64) (model.Account, error) {
 	row, err := gorm.G[accountRow](r.db).Where("id = ?", id).First(ctx)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = model.ErrNotFound
+	}
 	return row.toModel(), err
 }
 
