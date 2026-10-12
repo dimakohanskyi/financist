@@ -1,14 +1,14 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
 	financistdb "github.com/dimakohanskyi/financist/internal/db"
-	sqlitedb "github.com/dimakohanskyi/financist/internal/db/sqlite/generated"
-	_ "modernc.org/sqlite"
+	"github.com/dimakohanskyi/financist/internal/repository"
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -37,11 +37,12 @@ func main() {
 		log.Fatal("failed to set up logger")
 	}
 
-	dbConnection, err := sql.Open("sqlite", "financist.db")
+	gormDB, err := gorm.Open(sqlite.Open("financist.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal("application couldn't create or connect to db")
 	}
-	if error := dbConnection.Ping(); error != nil {
+	dbConnection, err := gormDB.DB()
+	if err != nil {
 		log.Fatal("DB is not created or accessible")
 	}
 
@@ -54,7 +55,7 @@ func main() {
 		gqlPort = "8080"
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: sqlitedb.New(dbConnection)}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Accounts: repository.NewAccountRepo(gormDB)}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})

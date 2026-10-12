@@ -2,7 +2,7 @@
 
 package graph
 
-import sqlitedb "github.com/dimakohanskyi/financist/internal/db/sqlite/generated"
+import "github.com/dimakohanskyi/financist/internal/repository"
 
 // This file will not be regenerated automatically.
 //
@@ -10,5 +10,5 @@ import sqlitedb "github.com/dimakohanskyi/financist/internal/db/sqlite/generated
 // here.
 
 type Resolver struct {
-	DB *sqlitedb.Queries
+	Accounts *repository.AccountRepo
 }
