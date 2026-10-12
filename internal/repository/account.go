@@ -21,3 +21,7 @@ func NewAccountRepo(db *gorm.DB) *AccountRepo { return &AccountRepo{db} }
 func (r *AccountRepo) Create(ctx context.Context, a *Account) error {
 	return gorm.G[Account](r.db).Create(ctx, a)
 }
+
+func (r *AccountRepo) GetByID(ctx context.Context, id int64) (Account, error) {
+	return gorm.G[Account](r.db).Where("id = ?", id).First(ctx)
+}
