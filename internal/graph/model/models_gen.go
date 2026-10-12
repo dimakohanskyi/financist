@@ -51,6 +51,12 @@ type Transaction struct {
 	Date        time.Time `json:"date"`
 }
 
+type TransactionPage struct {
+	Items []*Transaction `json:"items"`
+	// Number of matches across all pages
+	Total int32 `json:"total"`
+}
+
 type UpdateAccountInput struct {
 	Name        *string      `json:"name,omitempty"`
 	AccountType *AccountType `json:"accountType,omitempty"`

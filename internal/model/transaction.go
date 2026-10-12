@@ -17,3 +17,9 @@ type Transaction struct {
 	Description string
 	Date        time.Time
 }
+
+type TransactionFilter struct {
+	AccountID *int64 // matches both source and destination of transfers
+	Limit     int
+	Offset    int
+}

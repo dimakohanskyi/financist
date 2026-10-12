@@ -31,3 +31,19 @@ func TestTransactionGetByID(t *testing.T) {
 		t.Fatalf("got %+v, err %v", got, err)
 	}
 }
+
+func TestTransactionList(t *testing.T) {
+	r := NewTransactionRepo(newTestDB(t))
+	ctx := context.Background()
+	for _, acc := range []int64{1, 1, 2} {
+		tx := &model.Transaction{AccountID: acc, Type: model.TransactionExpense, Amount: 100, Date: time.Now()}
+		if err := r.Create(ctx, tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	one := int64(1)
+	got, total, err := r.List(ctx, model.TransactionFilter{AccountID: &one, Limit: 1})
+	if err != nil || len(got) != 1 || total != 2 {
+		t.Fatalf("got %d items, total %d, err %v", len(got), total, err)
+	}
+}

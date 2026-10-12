@@ -20,6 +20,9 @@ func (fakeTxs) Create(context.Context, *model.Transaction) error { return nil }
 func (fakeTxs) GetByID(context.Context, int64) (model.Transaction, error) {
 	return model.Transaction{}, nil
 }
+func (fakeTxs) List(context.Context, model.TransactionFilter) ([]model.Transaction, int64, error) {
+	return nil, 0, nil
+}
 
 func TestCreate(t *testing.T) {
 	tx := func() *model.Transaction {

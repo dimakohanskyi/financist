@@ -17,6 +17,7 @@ type AccountGetter interface {
 type TransactionStore interface {
 	Create(ctx context.Context, t *model.Transaction) error
 	GetByID(ctx context.Context, id int64) (model.Transaction, error)
+	List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error)
 }
 
 type TransactionService struct {
@@ -63,4 +64,18 @@ func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) e
 
 func (s *TransactionService) Get(ctx context.Context, id int64) (model.Transaction, error) {
 	return s.txs.GetByID(ctx, id)
+}
+
+const (
+	defaultLimit = 50
+	maxLimit     = 200
+)
+
+func (s *TransactionService) List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error) {
+	if f.Limit <= 0 {
+		f.Limit = defaultLimit
+	}
+	f.Limit = min(f.Limit, maxLimit)
+	f.Offset = max(f.Offset, 0)
+	return s.txs.List(ctx, f)
 }

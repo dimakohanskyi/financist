@@ -56,3 +56,30 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 	}
 	return toTransaction(&t), nil
 }
+
+// Transactions is the resolver for the transactions field.
+func (r *queryResolver) Transactions(ctx context.Context, accountID *string, limit *int32, offset *int32) (*model.TransactionPage, error) {
+	f := domain.TransactionFilter{}
+	if accountID != nil {
+		n, err := parseID(*accountID)
+		if err != nil {
+			return nil, err
+		}
+		f.AccountID = &n
+	}
+	if limit != nil {
+		f.Limit = int(*limit)
+	}
+	if offset != nil {
+		f.Offset = int(*offset)
+	}
+	txs, total, err := r.TxService.List(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*model.Transaction, len(txs))
+	for i := range txs {
+		items[i] = toTransaction(&txs[i])
+	}
+	return &model.TransactionPage{Items: items, Total: int32(total)}, nil
+}

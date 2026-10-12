@@ -29,6 +29,14 @@ extend type Mutation {
   createTransaction(input: CreateTransactionInput!): Transaction!
 }
 
+type TransactionPage {
+  items: [Transaction!]!
+  "Number of matches across all pages"
+  total: Int!
+}
+
 extend type Query {
   transaction(id: ID!): Transaction
+  "Newest first. Transfers show up for both accounts. limit defaults to 50, max 200"
+  transactions(accountId: ID, limit: Int = 50, offset: Int = 0): TransactionPage!
 }
