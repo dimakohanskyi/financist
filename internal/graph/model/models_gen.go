@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 type Account struct {
@@ -23,10 +24,37 @@ type CreateAccountInput struct {
 	Currency    Currency    `json:"currency"`
 }
 
+type CreateTransactionInput struct {
+	AccountID string `json:"accountId"`
+	// Only for transfers
+	ToAccountID *string         `json:"toAccountId,omitempty"`
+	Type        TransactionType `json:"type"`
+	Amount      int             `json:"amount"`
+	Description *string         `json:"description,omitempty"`
+	Date        time.Time       `json:"date"`
+}
+
 type Mutation struct {
 }
 
 type Query struct {
+}
+
+type Transaction struct {
+	ID          string          `json:"id"`
+	AccountID   string          `json:"accountId"`
+	ToAccountID *string         `json:"toAccountId,omitempty"`
+	Type        TransactionType `json:"type"`
+	// Minor units (cents), always positive
+	Amount      int       `json:"amount"`
+	Description string    `json:"description"`
+	Date        time.Time `json:"date"`
+}
+
+type TransactionPage struct {
+	Items []*Transaction `json:"items"`
+	// Number of matches across all pages
+	Total int32 `json:"total"`
 }
 
 type UpdateAccountInput struct {
@@ -34,6 +62,16 @@ type UpdateAccountInput struct {
 	AccountType *AccountType `json:"accountType,omitempty"`
 	Currency    *Currency    `json:"currency,omitempty"`
 	IsArchived  *bool        `json:"isArchived,omitempty"`
+}
+
+// Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
+type UpdateTransactionInput struct {
+	AccountID   *string          `json:"accountId,omitempty"`
+	ToAccountID *string          `json:"toAccountId,omitempty"`
+	Type        *TransactionType `json:"type,omitempty"`
+	Amount      *int             `json:"amount,omitempty"`
+	Description *string          `json:"description,omitempty"`
+	Date        *time.Time       `json:"date,omitempty"`
 }
 
 type AccountType string
@@ -153,6 +191,63 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TransactionType string
+
+const (
+	TransactionTypeIncome   TransactionType = "income"
+	TransactionTypeExpense  TransactionType = "expense"
+	TransactionTypeTransfer TransactionType = "transfer"
+)
+
+var AllTransactionType = []TransactionType{
+	TransactionTypeIncome,
+	TransactionTypeExpense,
+	TransactionTypeTransfer,
+}
+
+func (e TransactionType) IsValid() bool {
+	switch e {
+	case TransactionTypeIncome, TransactionTypeExpense, TransactionTypeTransfer:
+		return true
+	}
+	return false
+}
+
+func (e TransactionType) String() string {
+	return string(e)
+}
+
+func (e *TransactionType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TransactionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TransactionType", str)
+	}
+	return nil
+}
+
+func (e TransactionType) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TransactionType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TransactionType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
