@@ -69,3 +69,11 @@ func (r *TransactionRepo) Update(ctx context.Context, t *model.Transaction) erro
 	row := transactionRow(*t)
 	return r.db.WithContext(ctx).Model(&transactionRow{}).Where("id = ?", t.ID).Select("*").Omit("id").Updates(&row).Error
 }
+
+func (r *TransactionRepo) Delete(ctx context.Context, id int64) error {
+	res := r.db.WithContext(ctx).Delete(&transactionRow{}, id)
+	if res.Error == nil && res.RowsAffected == 0 {
+		return model.ErrNotFound
+	}
+	return res.Error
+}

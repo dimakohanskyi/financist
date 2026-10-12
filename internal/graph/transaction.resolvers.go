@@ -77,6 +77,18 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 	return toTransaction(&t), nil
 }
 
+// DeleteTransaction is the resolver for the deleteTransaction field.
+func (r *mutationResolver) DeleteTransaction(ctx context.Context, id string) (bool, error) {
+	n, err := parseID(id)
+	if err != nil {
+		return false, err
+	}
+	if err := r.TxService.Delete(ctx, n); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Transaction is the resolver for the transaction field.
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {
 	n, err := parseID(id)

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -63,5 +64,20 @@ func TestTransactionUpdate(t *testing.T) {
 	got, err := r.GetByID(ctx, tx.ID)
 	if err != nil || got.Amount != 250 || got.ToAccountID != nil {
 		t.Fatalf("got %+v, err %v", got, err)
+	}
+}
+
+func TestTransactionDelete(t *testing.T) {
+	r := NewTransactionRepo(newTestDB(t))
+	ctx := context.Background()
+	tx := &model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 100, Date: time.Now()}
+	if err := r.Create(ctx, tx); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Delete(ctx, tx.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.GetByID(ctx, tx.ID); !errors.Is(err, model.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }

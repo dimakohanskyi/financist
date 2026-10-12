@@ -21,6 +21,7 @@ func (fakeTxs) GetByID(context.Context, int64) (model.Transaction, error) {
 	return model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 100}, nil
 }
 func (fakeTxs) Update(context.Context, *model.Transaction) error { return nil }
+func (fakeTxs) Delete(context.Context, int64) error              { return nil }
 func (fakeTxs) List(context.Context, model.TransactionFilter) ([]model.Transaction, int64, error) {
 	return nil, 0, nil
 }

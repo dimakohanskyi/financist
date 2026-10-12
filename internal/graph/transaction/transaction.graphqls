@@ -38,6 +38,8 @@ input UpdateTransactionInput {
 extend type Mutation {
   createTransaction(input: CreateTransactionInput!): Transaction!
   updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
+  "Permanently removes the transaction"
+  deleteTransaction(id: ID!): Boolean!
 }
 
 type TransactionPage {

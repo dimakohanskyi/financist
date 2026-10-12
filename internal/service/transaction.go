@@ -19,6 +19,7 @@ type TransactionStore interface {
 	GetByID(ctx context.Context, id int64) (model.Transaction, error)
 	List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error)
 	Update(ctx context.Context, t *model.Transaction) error
+	Delete(ctx context.Context, id int64) error
 }
 
 type TransactionService struct {
@@ -119,4 +120,8 @@ func (s *TransactionService) List(ctx context.Context, f model.TransactionFilter
 	f.Limit = min(f.Limit, maxLimit)
 	f.Offset = max(f.Offset, 0)
 	return s.txs.List(ctx, f)
+}
+
+func (s *TransactionService) Delete(ctx context.Context, id int64) error {
+	return s.txs.Delete(ctx, id)
 }
