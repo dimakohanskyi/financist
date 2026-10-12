@@ -72,3 +72,19 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("got %+v, err %v", got, err)
 	}
 }
+
+func TestArchive(t *testing.T) {
+	r := newTestRepo(t)
+	ctx := context.Background()
+	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	if err := r.Create(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Archive(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.List(ctx, false)
+	if err != nil || len(got) != 0 {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+}

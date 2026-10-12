@@ -63,3 +63,10 @@ func (r *AccountRepo) Update(ctx context.Context, id int64, u AccountUpdate) (Ac
 	}
 	return r.GetByID(ctx, id)
 }
+
+// Archive soft-deletes the account.
+func (r *AccountRepo) Archive(ctx context.Context, id int64) error {
+	archived := true
+	_, err := r.Update(ctx, id, AccountUpdate{IsArchived: &archived})
+	return err
+}

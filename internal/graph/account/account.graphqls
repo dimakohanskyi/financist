@@ -43,4 +43,6 @@ input UpdateAccountInput {
 extend type Mutation {
   createAccount(input: CreateAccountInput!): Account!
   updateAccount(id: ID!, input: UpdateAccountInput!): Account!
+  # soft delete: archives the account
+  deleteAccount(id: ID!): Boolean!
 }
