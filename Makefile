@@ -3,5 +3,4 @@ run:
 lint:
 	golangci-lint run
 gen:
-	sqlc generate
 	go generate ./internal/graph
