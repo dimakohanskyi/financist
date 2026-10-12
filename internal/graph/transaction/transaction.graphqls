@@ -1,0 +1,34 @@
+enum TransactionType {
+  income
+  expense
+  transfer
+}
+
+type Transaction {
+  id: ID!
+  accountId: ID!
+  toAccountId: ID
+  type: TransactionType!
+  "Minor units (cents), always positive"
+  amount: Int64!
+  description: String!
+  date: Time!
+}
+
+input CreateTransactionInput {
+  accountId: ID!
+  "Only for transfers"
+  toAccountId: ID
+  type: TransactionType!
+  amount: Int64!
+  description: String = ""
+  date: Time!
+}
+
+extend type Mutation {
+  createTransaction(input: CreateTransactionInput!): Transaction!
+}
+
+extend type Query {
+  transaction(id: ID!): Transaction
+}

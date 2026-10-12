@@ -16,3 +16,21 @@ func toAccount(a *domain.Account) *model.Account {
 		IsArchived:  a.IsArchived,
 	}
 }
+
+func parseID(id string) (int64, error) { return strconv.ParseInt(id, 10, 64) }
+
+func toTransaction(t *domain.Transaction) *model.Transaction {
+	out := &model.Transaction{
+		ID:          strconv.FormatInt(t.ID, 10),
+		AccountID:   strconv.FormatInt(t.AccountID, 10),
+		Type:        model.TransactionType(t.Type),
+		Amount:      int(t.Amount),
+		Description: t.Description,
+		Date:        t.Date,
+	}
+	if t.ToAccountID != nil {
+		to := strconv.FormatInt(*t.ToAccountID, 10)
+		out.ToAccountID = &to
+	}
+	return out
+}

@@ -9,17 +9,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func newTestRepo(t *testing.T) *AccountRepo {
+func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&accountRow{}); err != nil {
+	if err := db.AutoMigrate(&accountRow{}, &transactionRow{}); err != nil {
 		t.Fatal(err)
 	}
-	return NewAccountRepo(db)
+	return db
 }
+
+func newTestRepo(t *testing.T) *AccountRepo { return NewAccountRepo(newTestDB(t)) }
 
 func TestCreate(t *testing.T) {
 	a := &model.Account{Name: "Main", AccountType: "checking", Currency: "USD"}
