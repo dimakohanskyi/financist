@@ -7,11 +7,12 @@ package graph
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strconv"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	"github.com/dimakohanskyi/financist/internal/repository"
+	"gorm.io/gorm"
 )
 
 // CreateAccount is the resolver for the createAccount field.
@@ -24,16 +25,31 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input model.Create
 	if err := r.Accounts.Create(ctx, acc); err != nil {
 		return nil, err
 	}
-	return &model.Account{
-		ID:          strconv.FormatInt(acc.ID, 10),
-		Name:        acc.Name,
-		AccountType: model.AccountType(acc.AccountType),
-		Currency:    model.Currency(acc.Currency),
-		IsArchived:  acc.IsArchived,
-	}, nil
+	return toAccount(acc), nil
 }
 
 // Account is the resolver for the account field.
 func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account, error) {
-	panic(fmt.Errorf("not implemented: Account - account"))
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	acc, err := r.Accounts.GetByID(ctx, n)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil // account is nullable in the schema
+	}
+	if err != nil {
+		return nil, err
+	}
+	return toAccount(&acc), nil
+}
+
+func toAccount(a *repository.Account) *model.Account {
+	return &model.Account{
+		ID:          strconv.FormatInt(a.ID, 10),
+		Name:        a.Name,
+		AccountType: model.AccountType(a.AccountType),
+		Currency:    model.Currency(a.Currency),
+		IsArchived:  a.IsArchived,
+	}
 }
