@@ -33,6 +33,14 @@ input CreateAccountInput {
   currency: Currency!
 }
 
+input UpdateAccountInput {
+  name: String
+  accountType: AccountType
+  currency: Currency
+  isArchived: Boolean
+}
+
 extend type Mutation {
   createAccount(input: CreateAccountInput!): Account!
+  updateAccount(id: ID!, input: UpdateAccountInput!): Account!
 }

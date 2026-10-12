@@ -58,3 +58,17 @@ func TestList(t *testing.T) {
 		t.Fatalf("got %+v, err %v", got, err)
 	}
 }
+
+func TestUpdate(t *testing.T) {
+	r := newTestRepo(t)
+	ctx := context.Background()
+	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	if err := r.Create(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	name, archived := "Renamed", true
+	got, err := r.Update(ctx, a.ID, AccountUpdate{Name: &name, IsArchived: &archived})
+	if err != nil || got.Name != "Renamed" || !got.IsArchived || got.Currency != "USD" {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+}

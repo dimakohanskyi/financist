@@ -28,6 +28,28 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input model.Create
 	return toAccount(acc), nil
 }
 
+// UpdateAccount is the resolver for the updateAccount field.
+func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input model.UpdateAccountInput) (*model.Account, error) {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	u := repository.AccountUpdate{Name: input.Name, IsArchived: input.IsArchived}
+	if input.AccountType != nil {
+		v := string(*input.AccountType)
+		u.AccountType = &v
+	}
+	if input.Currency != nil {
+		v := string(*input.Currency)
+		u.Currency = &v
+	}
+	acc, err := r.AccountRepo.Update(ctx, n, u)
+	if err != nil {
+		return nil, err
+	}
+	return toAccount(&acc), nil
+}
+
 // Account is the resolver for the account field.
 func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account, error) {
 	n, err := strconv.ParseInt(id, 10, 64)
