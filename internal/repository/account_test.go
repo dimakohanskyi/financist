@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dimakohanskyi/financist/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
@@ -14,14 +15,14 @@ func newTestRepo(t *testing.T) *AccountRepo {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&Account{}); err != nil {
+	if err := db.AutoMigrate(&accountRow{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewAccountRepo(db)
 }
 
 func TestCreate(t *testing.T) {
-	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	a := &model.Account{Name: "Main", AccountType: "checking", Currency: "USD"}
 	if err := newTestRepo(t).Create(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestCreate(t *testing.T) {
 
 func TestGetByID(t *testing.T) {
 	r := newTestRepo(t)
-	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	a := &model.Account{Name: "Main", AccountType: "checking", Currency: "USD"}
 	if err := r.Create(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestGetByID(t *testing.T) {
 func TestList(t *testing.T) {
 	r := newTestRepo(t)
 	ctx := context.Background()
-	for _, a := range []*Account{
+	for _, a := range []*model.Account{
 		{Name: "Active", AccountType: "cash", Currency: "USD"},
 		{Name: "Old", AccountType: "cash", Currency: "USD", IsArchived: true},
 	} {
@@ -62,12 +63,12 @@ func TestList(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	r := newTestRepo(t)
 	ctx := context.Background()
-	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	a := &model.Account{Name: "Main", AccountType: "checking", Currency: "USD"}
 	if err := r.Create(ctx, a); err != nil {
 		t.Fatal(err)
 	}
 	name, archived := "Renamed", true
-	got, err := r.Update(ctx, a.ID, AccountUpdate{Name: &name, IsArchived: &archived})
+	got, err := r.Update(ctx, a.ID, model.AccountUpdate{Name: &name, IsArchived: &archived})
 	if err != nil || got.Name != "Renamed" || !got.IsArchived || got.Currency != "USD" {
 		t.Fatalf("got %+v, err %v", got, err)
 	}
@@ -76,7 +77,7 @@ func TestUpdate(t *testing.T) {
 func TestArchive(t *testing.T) {
 	r := newTestRepo(t)
 	ctx := context.Background()
-	a := &Account{Name: "Main", AccountType: "checking", Currency: "USD"}
+	a := &model.Account{Name: "Main", AccountType: "checking", Currency: "USD"}
 	if err := r.Create(ctx, a); err != nil {
 		t.Fatal(err)
 	}
