@@ -18,8 +18,9 @@ type fakeTxs struct{}
 
 func (fakeTxs) Create(context.Context, *model.Transaction) error { return nil }
 func (fakeTxs) GetByID(context.Context, int64) (model.Transaction, error) {
-	return model.Transaction{}, nil
+	return model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 100}, nil
 }
+func (fakeTxs) Update(context.Context, *model.Transaction) error { return nil }
 func (fakeTxs) List(context.Context, model.TransactionFilter) ([]model.Transaction, int64, error) {
 	return nil, 0, nil
 }
@@ -36,5 +37,20 @@ func TestCreate(t *testing.T) {
 	err := NewTransactionService(fakeTxs{}, fakeAccounts{archived: true}).Create(ctx, tx())
 	if !errors.Is(err, ErrInvalid) {
 		t.Fatalf("archived account accepted, err: %v", err)
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	svc := NewTransactionService(fakeTxs{}, fakeAccounts{})
+	ctx := context.Background()
+
+	amount := int64(250)
+	got, err := svc.Update(ctx, 1, model.TransactionUpdate{Amount: &amount})
+	if err != nil || got.Amount != 250 {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+	zero := int64(0)
+	if _, err := svc.Update(ctx, 1, model.TransactionUpdate{Amount: &zero}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero amount accepted, err: %v", err)
 	}
 }

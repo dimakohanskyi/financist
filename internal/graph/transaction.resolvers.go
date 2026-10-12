@@ -41,6 +41,42 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.Cr
 	return toTransaction(t), nil
 }
 
+// UpdateTransaction is the resolver for the updateTransaction field.
+func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, input model.UpdateTransactionInput) (*model.Transaction, error) {
+	n, err := parseID(id)
+	if err != nil {
+		return nil, err
+	}
+	u := domain.TransactionUpdate{Description: input.Description, Date: input.Date}
+	if input.AccountID != nil {
+		v, err := parseID(*input.AccountID)
+		if err != nil {
+			return nil, err
+		}
+		u.AccountID = &v
+	}
+	if input.ToAccountID != nil {
+		v, err := parseID(*input.ToAccountID)
+		if err != nil {
+			return nil, err
+		}
+		u.ToAccountID = &v
+	}
+	if input.Type != nil {
+		v := string(*input.Type)
+		u.Type = &v
+	}
+	if input.Amount != nil {
+		v := int64(*input.Amount)
+		u.Amount = &v
+	}
+	t, err := r.TxService.Update(ctx, n, u)
+	if err != nil {
+		return nil, err
+	}
+	return toTransaction(&t), nil
+}
+
 // Transaction is the resolver for the transaction field.
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {
 	n, err := parseID(id)

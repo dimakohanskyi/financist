@@ -18,6 +18,7 @@ type TransactionStore interface {
 	Create(ctx context.Context, t *model.Transaction) error
 	GetByID(ctx context.Context, id int64) (model.Transaction, error)
 	List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error)
+	Update(ctx context.Context, t *model.Transaction) error
 }
 
 type TransactionService struct {
@@ -30,6 +31,13 @@ func NewTransactionService(txs TransactionStore, accounts AccountGetter) *Transa
 }
 
 func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) error {
+	if err := s.validate(ctx, t); err != nil {
+		return err
+	}
+	return s.txs.Create(ctx, t)
+}
+
+func (s *TransactionService) validate(ctx context.Context, t *model.Transaction) error {
 	if t.Amount <= 0 {
 		return fmt.Errorf("%w: amount must be positive", ErrInvalid)
 	}
@@ -59,7 +67,40 @@ func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) e
 			return fmt.Errorf("%w: account %d is archived", ErrInvalid, id)
 		}
 	}
-	return s.txs.Create(ctx, t)
+	return nil
+}
+
+// Update applies the patch to the stored transaction and re-validates the result.
+func (s *TransactionService) Update(ctx context.Context, id int64, u model.TransactionUpdate) (model.Transaction, error) {
+	t, err := s.txs.GetByID(ctx, id)
+	if err != nil {
+		return t, err
+	}
+	if u.AccountID != nil {
+		t.AccountID = *u.AccountID
+	}
+	if u.Type != nil {
+		t.Type = *u.Type
+	}
+	if u.Amount != nil {
+		t.Amount = *u.Amount
+	}
+	if u.Description != nil {
+		t.Description = *u.Description
+	}
+	if u.Date != nil {
+		t.Date = *u.Date
+	}
+	if u.ToAccountID != nil {
+		t.ToAccountID = u.ToAccountID
+	}
+	if t.Type != model.TransactionTransfer {
+		t.ToAccountID = nil // only transfers have a destination
+	}
+	if err := s.validate(ctx, &t); err != nil {
+		return t, err
+	}
+	return t, s.txs.Update(ctx, &t)
 }
 
 func (s *TransactionService) Get(ctx context.Context, id int64) (model.Transaction, error) {

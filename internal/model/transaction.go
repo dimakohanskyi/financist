@@ -23,3 +23,13 @@ type TransactionFilter struct {
 	Limit     int
 	Offset    int
 }
+
+// TransactionUpdate holds the fields to change; nil means "leave as is".
+type TransactionUpdate struct {
+	AccountID   *int64
+	ToAccountID *int64
+	Type        *string
+	Amount      *int64
+	Description *string
+	Date        *time.Time
+}

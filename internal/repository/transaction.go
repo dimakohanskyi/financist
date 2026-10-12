@@ -63,3 +63,9 @@ func (r *TransactionRepo) List(ctx context.Context, f model.TransactionFilter) (
 	}
 	return out, total, nil
 }
+
+// Update overwrites every column of an existing transaction.
+func (r *TransactionRepo) Update(ctx context.Context, t *model.Transaction) error {
+	row := transactionRow(*t)
+	return r.db.WithContext(ctx).Model(&transactionRow{}).Where("id = ?", t.ID).Select("*").Omit("id").Updates(&row).Error
+}

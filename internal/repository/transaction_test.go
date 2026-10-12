@@ -47,3 +47,21 @@ func TestTransactionList(t *testing.T) {
 		t.Fatalf("got %d items, total %d, err %v", len(got), total, err)
 	}
 }
+
+func TestTransactionUpdate(t *testing.T) {
+	r := NewTransactionRepo(newTestDB(t))
+	ctx := context.Background()
+	to := int64(2)
+	tx := &model.Transaction{AccountID: 1, ToAccountID: &to, Type: model.TransactionTransfer, Amount: 100, Date: time.Now()}
+	if err := r.Create(ctx, tx); err != nil {
+		t.Fatal(err)
+	}
+	tx.Type, tx.ToAccountID, tx.Amount = model.TransactionExpense, nil, 250
+	if err := r.Update(ctx, tx); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.GetByID(ctx, tx.ID)
+	if err != nil || got.Amount != 250 || got.ToAccountID != nil {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+}

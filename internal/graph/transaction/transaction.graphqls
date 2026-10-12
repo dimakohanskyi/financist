@@ -25,8 +25,19 @@ input CreateTransactionInput {
   date: Time!
 }
 
+"Omitted fields are left unchanged. Changing type away from transfer clears toAccountId"
+input UpdateTransactionInput {
+  accountId: ID
+  toAccountId: ID
+  type: TransactionType
+  amount: Int64
+  description: String
+  date: Time
+}
+
 extend type Mutation {
   createTransaction(input: CreateTransactionInput!): Transaction!
+  updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
 }
 
 type TransactionPage {

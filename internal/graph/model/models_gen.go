@@ -64,6 +64,16 @@ type UpdateAccountInput struct {
 	IsArchived  *bool        `json:"isArchived,omitempty"`
 }
 
+// Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
+type UpdateTransactionInput struct {
+	AccountID   *string          `json:"accountId,omitempty"`
+	ToAccountID *string          `json:"toAccountId,omitempty"`
+	Type        *TransactionType `json:"type,omitempty"`
+	Amount      *int             `json:"amount,omitempty"`
+	Description *string          `json:"description,omitempty"`
+	Date        *time.Time       `json:"date,omitempty"`
+}
+
 type AccountType string
 
 const (
