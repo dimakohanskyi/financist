@@ -12,7 +12,6 @@ import (
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	domain "github.com/dimakohanskyi/financist/internal/model"
-	"gorm.io/gorm"
 )
 
 // CreateAccount is the resolver for the createAccount field.
@@ -66,7 +65,7 @@ func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account,
 		return nil, err
 	}
 	acc, err := r.AccountRepo.GetByID(ctx, n)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, domain.ErrNotFound) {
 		return nil, nil // account is nullable in the schema
 	}
 	if err != nil {

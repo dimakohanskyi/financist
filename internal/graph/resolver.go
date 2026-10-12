@@ -2,7 +2,10 @@
 
 package graph
 
-import "github.com/dimakohanskyi/financist/internal/repository"
+import (
+	"github.com/dimakohanskyi/financist/internal/repository"
+	"github.com/dimakohanskyi/financist/internal/service"
+)
 
 // This file will not be regenerated automatically.
 //
@@ -11,4 +14,5 @@ import "github.com/dimakohanskyi/financist/internal/repository"
 
 type Resolver struct {
 	AccountRepo *repository.AccountRepo
+	TxService   *service.TransactionService
 }
