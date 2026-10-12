@@ -11,13 +11,13 @@ import (
 	"strconv"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
-	"github.com/dimakohanskyi/financist/internal/repository"
+	domain "github.com/dimakohanskyi/financist/internal/model"
 	"gorm.io/gorm"
 )
 
 // CreateAccount is the resolver for the createAccount field.
 func (r *mutationResolver) CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error) {
-	acc := &repository.Account{
+	acc := &domain.Account{
 		Name:        input.Name,
 		AccountType: string(input.AccountType),
 		Currency:    string(input.Currency),
@@ -34,7 +34,7 @@ func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input m
 	if err != nil {
 		return nil, err
 	}
-	u := repository.AccountUpdate{Name: input.Name, IsArchived: input.IsArchived}
+	u := domain.AccountUpdate{Name: input.Name, IsArchived: input.IsArchived}
 	if input.AccountType != nil {
 		v := string(*input.AccountType)
 		u.AccountType = &v

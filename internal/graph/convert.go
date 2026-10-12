@@ -4,10 +4,10 @@ import (
 	"strconv"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
-	"github.com/dimakohanskyi/financist/internal/repository"
+	domain "github.com/dimakohanskyi/financist/internal/model"
 )
 
-func toAccount(a *repository.Account) *model.Account {
+func toAccount(a *domain.Account) *model.Account {
 	return &model.Account{
 		ID:          strconv.FormatInt(a.ID, 10),
 		Name:        a.Name,
