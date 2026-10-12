@@ -50,6 +50,15 @@ func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input m
 	return toAccount(&acc), nil
 }
 
+// DeleteAccount is the resolver for the deleteAccount field.
+func (r *mutationResolver) DeleteAccount(ctx context.Context, id string) (bool, error) {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return false, err
+	}
+	return true, r.AccountRepo.Archive(ctx, n)
+}
+
 // Account is the resolver for the account field.
 func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account, error) {
 	n, err := strconv.ParseInt(id, 10, 64)
