@@ -7,6 +7,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	domain "github.com/dimakohanskyi/financist/internal/model"
@@ -38,4 +39,20 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.Cr
 		return nil, err
 	}
 	return toTransaction(t), nil
+}
+
+// Transaction is the resolver for the transaction field.
+func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {
+	n, err := parseID(id)
+	if err != nil {
+		return nil, err
+	}
+	t, err := r.TxService.Get(ctx, n)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, nil // transaction is nullable in the schema
+	}
+	if err != nil {
+		return nil, err
+	}
+	return toTransaction(&t), nil
 }

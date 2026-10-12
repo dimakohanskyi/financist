@@ -17,6 +17,9 @@ func (f fakeAccounts) GetByID(context.Context, int64) (model.Account, error) {
 type fakeTxs struct{}
 
 func (fakeTxs) Create(context.Context, *model.Transaction) error { return nil }
+func (fakeTxs) GetByID(context.Context, int64) (model.Transaction, error) {
+	return model.Transaction{}, nil
+}
 
 func TestCreate(t *testing.T) {
 	tx := func() *model.Transaction {

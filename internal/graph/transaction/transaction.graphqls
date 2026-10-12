@@ -28,3 +28,7 @@ input CreateTransactionInput {
 extend type Mutation {
   createTransaction(input: CreateTransactionInput!): Transaction!
 }
+
+extend type Query {
+  transaction(id: ID!): Transaction
+}

@@ -16,6 +16,7 @@ type AccountGetter interface {
 
 type TransactionStore interface {
 	Create(ctx context.Context, t *model.Transaction) error
+	GetByID(ctx context.Context, id int64) (model.Transaction, error)
 }
 
 type TransactionService struct {
@@ -58,4 +59,8 @@ func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) e
 		}
 	}
 	return s.txs.Create(ctx, t)
+}
+
+func (s *TransactionService) Get(ctx context.Context, id int64) (model.Transaction, error) {
+	return s.txs.GetByID(ctx, id)
 }

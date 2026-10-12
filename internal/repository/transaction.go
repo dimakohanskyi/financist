@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/dimakohanskyi/financist/internal/model"
@@ -32,4 +33,12 @@ func (r *TransactionRepo) Create(ctx context.Context, t *model.Transaction) erro
 	}
 	t.ID = row.ID
 	return nil
+}
+
+func (r *TransactionRepo) GetByID(ctx context.Context, id int64) (model.Transaction, error) {
+	row, err := gorm.G[transactionRow](r.db).Where("id = ?", id).First(ctx)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = model.ErrNotFound
+	}
+	return model.Transaction(row), err
 }
