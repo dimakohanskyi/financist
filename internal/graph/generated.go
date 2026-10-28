@@ -61,28 +61,30 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateAccount     func(childComplexity int, input model.CreateAccountInput) int
-		CreateCategory    func(childComplexity int, input model.CreateCategoryInput) int
-		CreateTag         func(childComplexity int, name string) int
-		CreateTransaction func(childComplexity int, input model.CreateTransactionInput) int
-		DeleteAccount     func(childComplexity int, id string) int
-		DeleteCategory    func(childComplexity int, id string) int
-		DeleteTag         func(childComplexity int, id string) int
-		DeleteTransaction func(childComplexity int, id string) int
-		UpdateAccount     func(childComplexity int, id string, input model.UpdateAccountInput) int
-		UpdateCategory    func(childComplexity int, id string, input model.UpdateCategoryInput) int
-		UpdateTransaction func(childComplexity int, id string, input model.UpdateTransactionInput) int
+		BulkCreateTransactions func(childComplexity int, inputs []*model.CreateTransactionInput) int
+		CreateAccount          func(childComplexity int, input model.CreateAccountInput) int
+		CreateCategory         func(childComplexity int, input model.CreateCategoryInput) int
+		CreateTag              func(childComplexity int, name string) int
+		CreateTransaction      func(childComplexity int, input model.CreateTransactionInput) int
+		DeleteAccount          func(childComplexity int, id string) int
+		DeleteCategory         func(childComplexity int, id string) int
+		DeleteTag              func(childComplexity int, id string) int
+		DeleteTransaction      func(childComplexity int, id string) int
+		UpdateAccount          func(childComplexity int, id string, input model.UpdateAccountInput) int
+		UpdateCategory         func(childComplexity int, id string, input model.UpdateCategoryInput) int
+		UpdateTransaction      func(childComplexity int, id string, input model.UpdateTransactionInput) int
 	}
 
 	Query struct {
-		Account      func(childComplexity int, id string) int
-		Accounts     func(childComplexity int, includeArchived *bool) int
-		Categories   func(childComplexity int, kind *model.CategoryKind) int
-		Category     func(childComplexity int, id string) int
-		Ping         func(childComplexity int) int
-		Tags         func(childComplexity int) int
-		Transaction  func(childComplexity int, id string) int
-		Transactions func(childComplexity int, accountID *string, limit *int32, offset *int32) int
+		Account          func(childComplexity int, id string) int
+		Accounts         func(childComplexity int, includeArchived *bool) int
+		Categories       func(childComplexity int, kind *model.CategoryKind) int
+		Category         func(childComplexity int, id string) int
+		Ping             func(childComplexity int) int
+		Tags             func(childComplexity int) int
+		Transaction      func(childComplexity int, id string) int
+		TransactionYears func(childComplexity int) int
+		Transactions     func(childComplexity int, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) int
 	}
 
 	Tag struct {
@@ -137,6 +139,7 @@ type MutationResolver interface {
 	CreateTransaction(ctx context.Context, input model.CreateTransactionInput) (*model.Transaction, error)
 	UpdateTransaction(ctx context.Context, id string, input model.UpdateTransactionInput) (*model.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) (bool, error)
+	BulkCreateTransactions(ctx context.Context, inputs []*model.CreateTransactionInput) (int32, error)
 }
 type QueryResolver interface {
 	Ping(ctx context.Context) (string, error)
@@ -146,7 +149,8 @@ type QueryResolver interface {
 	Categories(ctx context.Context, kind *model.CategoryKind) ([]*model.Category, error)
 	Tags(ctx context.Context) ([]*model.Tag, error)
 	Transaction(ctx context.Context, id string) (*model.Transaction, error)
-	Transactions(ctx context.Context, accountID *string, limit *int32, offset *int32) (*model.TransactionPage, error)
+	Transactions(ctx context.Context, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) (*model.TransactionPage, error)
+	TransactionYears(ctx context.Context) ([]int32, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -259,6 +263,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Category.SortOrder(childComplexity), true
 
+	case "Mutation.bulkCreateTransactions":
+		if e.ComplexityRoot.Mutation.BulkCreateTransactions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkCreateTransactions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.BulkCreateTransactions(childComplexity, args["inputs"].([]*model.CreateTransactionInput)), true
 	case "Mutation.createAccount":
 		if e.ComplexityRoot.Mutation.CreateAccount == nil {
 			break
@@ -449,6 +464,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Transaction(childComplexity, args["id"].(string)), true
+	case "Query.transactionYears":
+		if e.ComplexityRoot.Query.TransactionYears == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.TransactionYears(childComplexity), true
 	case "Query.transactions":
 		if e.ComplexityRoot.Query.Transactions == nil {
 			break
@@ -459,7 +480,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Transactions(childComplexity, args["accountId"].(*string), args["limit"].(*int32), args["offset"].(*int32)), true
+		return e.ComplexityRoot.Query.Transactions(childComplexity, args["accountId"].(*string), args["categoryId"].(*string), args["tagId"].(*string), args["type"].(*model.TransactionType), args["search"].(*string), args["from"].(*time.Time), args["to"].(*time.Time), args["sort"].(*model.TransactionSort), args["limit"].(*int32), args["offset"].(*int32)), true
 
 	case "Tag.id":
 		if e.ComplexityRoot.Tag.ID == nil {
@@ -920,6 +941,20 @@ func (ec *executionContext) childFields___Type(ctx context.Context, field graphq
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_bulkCreateTransactions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "inputs",
+		func(ctx context.Context, v any) ([]*model.CreateTransactionInput, error) {
+			return ec.unmarshalNCreateTransactionInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateTransactionInputᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["inputs"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1193,22 +1228,78 @@ func (ec *executionContext) field_Query_transactions_args(ctx context.Context, r
 		return nil, err
 	}
 	args["accountId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "categoryId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["categoryId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "tagId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["tagId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "type",
+		func(ctx context.Context, v any) (*model.TransactionType, error) {
+			return ec.unmarshalOTransactionType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["type"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "search",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["search"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "from",
+		func(ctx context.Context, v any) (*time.Time, error) {
+			return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "to",
+		func(ctx context.Context, v any) (*time.Time, error) {
+			return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["to"] = arg6
+	arg7, err := graphql.ProcessArgField(ctx, rawArgs, "sort",
+		func(ctx context.Context, v any) (*model.TransactionSort, error) {
+			return ec.unmarshalOTransactionSort2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSort(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sort"] = arg7
+	arg8, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
 		func(ctx context.Context, v any) (*int32, error) {
 			return ec.unmarshalOInt2ᚖint32(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+	args["limit"] = arg8
+	arg9, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
 		func(ctx context.Context, v any) (*int32, error) {
 			return ec.unmarshalOInt2ᚖint32(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["offset"] = arg2
+	args["offset"] = arg9
 	return args, nil
 }
 
@@ -2101,6 +2192,50 @@ func (ec *executionContext) fieldContext_Mutation_deleteTransaction(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_bulkCreateTransactions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_bulkCreateTransactions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().BulkCreateTransactions(ctx, fc.Args["inputs"].([]*model.CreateTransactionInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_bulkCreateTransactions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkCreateTransactions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_ping(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2386,7 +2521,7 @@ func (ec *executionContext) _Query_transactions(ctx context.Context, field graph
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Transactions(ctx, fc.Args["accountId"].(*string), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
+			return ec.Resolvers.Query().Transactions(ctx, fc.Args["accountId"].(*string), fc.Args["categoryId"].(*string), fc.Args["tagId"].(*string), fc.Args["type"].(*model.TransactionType), fc.Args["search"].(*string), fc.Args["from"].(*time.Time), fc.Args["to"].(*time.Time), fc.Args["sort"].(*model.TransactionSort), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.TransactionPage) graphql.Marshaler {
@@ -2418,6 +2553,29 @@ func (ec *executionContext) fieldContext_Query_transactions(ctx context.Context,
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Query_transactionYears(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_transactionYears(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().TransactionYears(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []int32) graphql.Marshaler {
+			return ec.marshalNInt2ᚕint32ᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_transactionYears(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4821,6 +4979,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "bulkCreateTransactions":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkCreateTransactions(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5026,6 +5191,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_transactions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "transactionYears":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_transactionYears(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -5800,6 +5987,25 @@ func (ec *executionContext) unmarshalNCreateTransactionInput2githubᚗcomᚋdima
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateTransactionInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateTransactionInputᚄ(ctx context.Context, v any) ([]*model.CreateTransactionInput, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.CreateTransactionInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCreateTransactionInput2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateTransactionInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNCreateTransactionInput2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateTransactionInput(ctx context.Context, v any) (*model.CreateTransactionInput, error) {
+	res, err := ec.unmarshalInputCreateTransactionInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCurrency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx context.Context, v any) (model.Currency, error) {
 	var res model.Currency
 	err := res.UnmarshalGQL(v)
@@ -5840,6 +6046,35 @@ func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNInt2ᚕint32ᚄ(ctx context.Context, v any) ([]int32, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]int32, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int32(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕint32ᚄ(ctx context.Context, sel ast.SelectionSet, v []int32) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int32(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNInt642int(ctx context.Context, v any) (int, error) {
@@ -6370,6 +6605,22 @@ func (ec *executionContext) marshalOTransaction2ᚖgithubᚗcomᚋdimakohanskyi�
 		return graphql.Null
 	}
 	return ec._Transaction(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTransactionSort2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSort(ctx context.Context, v any) (*model.TransactionSort, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.TransactionSort)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTransactionSort2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSort(ctx context.Context, sel ast.SelectionSet, v *model.TransactionSort) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOTransactionSplitInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInputᚄ(ctx context.Context, v any) ([]*model.TransactionSplitInput, error) {

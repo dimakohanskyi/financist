@@ -31,10 +31,22 @@ type TransactionSplit struct {
 	Note       string
 }
 
+const (
+	SortDateDesc   = "date_desc"
+	SortAmountDesc = "amount_desc"
+	SortAmountAsc  = "amount_asc"
+)
+
 type TransactionFilter struct {
-	AccountID *int64 // matches both source and destination of transfers
-	Limit     int
-	Offset    int
+	AccountID  *int64 // matches both source and destination of transfers
+	CategoryID *int64 // exact category, including split lines
+	TagID      *int64
+	Type       *string
+	Search     string // in description, merchant and notes
+	From, To   *time.Time
+	Sort       string // Sort* constant, newest first by default
+	Limit      int
+	Offset     int
 }
 
 // TransactionUpdate holds the fields to change; nil means "leave as is".

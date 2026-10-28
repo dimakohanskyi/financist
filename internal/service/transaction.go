@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -26,6 +27,8 @@ type TransactionStore interface {
 	List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error)
 	Update(ctx context.Context, t *model.Transaction) error
 	Delete(ctx context.Context, id int64) error
+	CreateMany(ctx context.Context, ts []*model.Transaction) error
+	YearRange(ctx context.Context) (from, to int, err error)
 }
 
 type TransactionService struct {
@@ -44,6 +47,41 @@ func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) e
 		return err
 	}
 	return s.txs.Create(ctx, t)
+}
+
+const maxBulk = 5000
+
+// CreateMany validates every transaction before inserting any, so one bad
+// row of a CSV import never leaves half a statement behind.
+func (s *TransactionService) CreateMany(ctx context.Context, ts []*model.Transaction) error {
+	if len(ts) == 0 || len(ts) > maxBulk {
+		return fmt.Errorf("%w: send 1 to %d transactions", ErrInvalid, maxBulk)
+	}
+	for i, t := range ts {
+		t.Description = capitalizeFirst(t.Description)
+		if err := s.validate(ctx, t); err != nil {
+			return fmt.Errorf("transaction %d: %w", i, err)
+		}
+	}
+	return s.txs.CreateMany(ctx, ts)
+}
+
+// Years lists every year from the first transaction through the current one,
+// gaps included, for a year picker.
+func (s *TransactionService) Years(ctx context.Context) ([]int, error) {
+	from, to, err := s.txs.YearRange(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().Year()
+	if from == 0 {
+		return []int{now}, nil
+	}
+	var years []int
+	for y := from; y <= max(to, now); y++ {
+		years = append(years, y)
+	}
+	return years, nil
 }
 
 func (s *TransactionService) validate(ctx context.Context, t *model.Transaction) error {

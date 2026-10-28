@@ -147,18 +147,47 @@ func (r *TransactionRepo) GetByID(ctx context.Context, id int64) (model.Transact
 	return row.toModel(), err
 }
 
-// List returns one page (newest first) and the total number of matches.
+// List returns one page and the total number of matches.
 func (r *TransactionRepo) List(ctx context.Context, f model.TransactionFilter) ([]model.Transaction, int64, error) {
 	q := r.db.WithContext(ctx).Model(&transactionRow{})
 	if f.AccountID != nil {
-		q = q.Where("account_id = ? OR to_account_id = ?", *f.AccountID, *f.AccountID)
+		q = q.Where("(account_id = ? OR to_account_id = ?)", *f.AccountID, *f.AccountID)
+	}
+	if f.CategoryID != nil {
+		// a split transaction keeps its categories on the split lines
+		q = q.Where("(category_id = ? OR id IN (SELECT transaction_id FROM transaction_splits WHERE category_id = ?))", *f.CategoryID, *f.CategoryID)
+	}
+	if f.TagID != nil {
+		q = q.Where("id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id = ?)", *f.TagID)
+	}
+	if f.Type != nil {
+		q = q.Where("type = ?", *f.Type)
+	}
+	if f.Search != "" {
+		// ponytail: LIKE ignores case for ASCII only; Cyrillic matches case-sensitively
+		p := "%" + f.Search + "%"
+		q = q.Where("(description LIKE ? OR merchant LIKE ? OR notes LIKE ?)", p, p, p)
+	}
+	if f.From != nil {
+		q = q.Where("date >= ?", f.From.UTC())
+	}
+	if f.To != nil {
+		q = q.Where("date <= ?", f.To.UTC())
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	var rows []transactionRow
-	if err := withLinks(q).Order("date DESC, id DESC").Limit(f.Limit).Offset(f.Offset).Find(&rows).Error; err != nil {
+	// id breaks ties so pages stay stable
+	order := "date DESC, id DESC"
+	switch f.Sort {
+	case model.SortAmountDesc:
+		order = "amount DESC, id DESC"
+	case model.SortAmountAsc:
+		order = "amount ASC, id DESC"
+	}
+	if err := withLinks(q).Order(order).Limit(f.Limit).Offset(f.Offset).Find(&rows).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]model.Transaction, len(rows))
@@ -166,6 +195,26 @@ func (r *TransactionRepo) List(ctx context.Context, f model.TransactionFilter) (
 		out[i] = row.toModel()
 	}
 	return out, total, nil
+}
+
+// CreateMany inserts all transactions or none.
+func (r *TransactionRepo) CreateMany(ctx context.Context, ts []*model.Transaction) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, t := range ts {
+			if err := create(tx, t); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// YearRange returns the years of the oldest and newest transaction, zeros when there are none.
+func (r *TransactionRepo) YearRange(ctx context.Context) (from, to int, err error) {
+	row := r.db.WithContext(ctx).Raw(`SELECT COALESCE(CAST(substr(MIN(date), 1, 4) AS INTEGER), 0),
+		COALESCE(CAST(substr(MAX(date), 1, 4) AS INTEGER), 0) FROM transactions`).Row()
+	err = row.Scan(&from, &to)
+	return from, to, err
 }
 
 func withLinks(q *gorm.DB) *gorm.DB {

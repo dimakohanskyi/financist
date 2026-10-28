@@ -8,6 +8,8 @@ package graph
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	domain "github.com/dimakohanskyi/financist/internal/model"
@@ -15,39 +17,8 @@ import (
 
 // CreateTransaction is the resolver for the createTransaction field.
 func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.CreateTransactionInput) (*model.Transaction, error) {
-	accountID, err := parseID(input.AccountID)
+	t, err := toNewTransaction(&input)
 	if err != nil {
-		return nil, err
-	}
-	t := &domain.Transaction{
-		AccountID: accountID,
-		Type:      string(input.Type),
-		Amount:    int64(input.Amount),
-		Date:      input.Date,
-	}
-	if t.ToAccountID, err = parseOptionalID(input.ToAccountID); err != nil {
-		return nil, err
-	}
-	if t.CategoryID, err = parseOptionalID(input.CategoryID); err != nil {
-		return nil, err
-	}
-	if input.Description != nil {
-		t.Description = *input.Description
-	}
-	if input.Merchant != nil {
-		t.Merchant = *input.Merchant
-	}
-	if input.Notes != nil {
-		t.Notes = *input.Notes
-	}
-	tagIDs, err := parseIDs(input.TagIds)
-	if err != nil {
-		return nil, err
-	}
-	for _, id := range tagIDs {
-		t.Tags = append(t.Tags, domain.Tag{ID: id})
-	}
-	if t.Splits, err = parseSplits(input.Splits); err != nil {
 		return nil, err
 	}
 	if err := r.TxService.Create(ctx, t); err != nil {
@@ -120,6 +91,22 @@ func (r *mutationResolver) DeleteTransaction(ctx context.Context, id string) (bo
 	return true, nil
 }
 
+// BulkCreateTransactions is the resolver for the bulkCreateTransactions field.
+func (r *mutationResolver) BulkCreateTransactions(ctx context.Context, inputs []*model.CreateTransactionInput) (int32, error) {
+	ts := make([]*domain.Transaction, len(inputs))
+	for i, input := range inputs {
+		t, err := toNewTransaction(input)
+		if err != nil {
+			return 0, err
+		}
+		ts[i] = t
+	}
+	if err := r.TxService.CreateMany(ctx, ts); err != nil {
+		return 0, err
+	}
+	return int32(len(ts)), nil
+}
+
 // Transaction is the resolver for the transaction field.
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {
 	n, err := parseID(id)
@@ -137,14 +124,23 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 }
 
 // Transactions is the resolver for the transactions field.
-func (r *queryResolver) Transactions(ctx context.Context, accountID *string, limit *int32, offset *int32) (*model.TransactionPage, error) {
-	f := domain.TransactionFilter{}
-	if accountID != nil {
-		n, err := parseID(*accountID)
-		if err != nil {
-			return nil, err
-		}
-		f.AccountID = &n
+func (r *queryResolver) Transactions(ctx context.Context, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) (*model.TransactionPage, error) {
+	f := domain.TransactionFilter{From: from, To: to, Type: (*string)(typeArg)}
+	var err error
+	if f.AccountID, err = parseOptionalID(accountID); err != nil {
+		return nil, err
+	}
+	if f.CategoryID, err = parseOptionalID(categoryID); err != nil {
+		return nil, err
+	}
+	if f.TagID, err = parseOptionalID(tagID); err != nil {
+		return nil, err
+	}
+	if search != nil {
+		f.Search = strings.TrimSpace(*search)
+	}
+	if sort != nil {
+		f.Sort = string(*sort)
 	}
 	if limit != nil {
 		f.Limit = int(*limit)
@@ -161,4 +157,14 @@ func (r *queryResolver) Transactions(ctx context.Context, accountID *string, lim
 		items[i] = toTransaction(&txs[i])
 	}
 	return &model.TransactionPage{Items: items, Total: int32(total)}, nil
+}
+
+// TransactionYears is the resolver for the transactionYears field.
+func (r *queryResolver) TransactionYears(ctx context.Context) ([]int32, error) {
+	years, err := r.TxService.Years(ctx)
+	out := make([]int32, len(years))
+	for i, y := range years {
+		out[i] = int32(y)
+	}
+	return out, err
 }

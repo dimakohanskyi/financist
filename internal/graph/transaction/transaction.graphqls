@@ -78,6 +78,14 @@ extend type Mutation {
   updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
   "Permanently removes the transaction"
   deleteTransaction(id: ID!): Boolean!
+  "For CSV imports: all are validated first, then all or none are saved. Returns how many were created"
+  bulkCreateTransactions(inputs: [CreateTransactionInput!]!): Int!
+}
+
+enum TransactionSort {
+  date_desc
+  amount_desc
+  amount_asc
 }
 
 type TransactionPage {
@@ -88,6 +96,23 @@ type TransactionPage {
 
 extend type Query {
   transaction(id: ID!): Transaction
-  "Newest first. Transfers show up for both accounts. limit defaults to 50, max 200"
-  transactions(accountId: ID, limit: Int = 50, offset: Int = 0): TransactionPage!
+  """
+  Transfers show up for both accounts. categoryId also matches split lines.
+  search looks in description, merchant and notes. from/to are inclusive.
+  limit defaults to 50, max 200
+  """
+  transactions(
+    accountId: ID
+    categoryId: ID
+    tagId: ID
+    type: TransactionType
+    search: String
+    from: Time
+    to: Time
+    sort: TransactionSort = date_desc
+    limit: Int = 50
+    offset: Int = 0
+  ): TransactionPage!
+  "From the first transaction's year through the current one, gaps included"
+  transactionYears: [Int!]!
 }

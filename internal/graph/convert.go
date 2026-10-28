@@ -109,3 +109,42 @@ func parseSplits(in []*model.TransactionSplitInput) ([]domain.TransactionSplit, 
 	}
 	return out, nil
 }
+
+func toNewTransaction(input *model.CreateTransactionInput) (*domain.Transaction, error) {
+	accountID, err := parseID(input.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	t := &domain.Transaction{
+		AccountID: accountID,
+		Type:      string(input.Type),
+		Amount:    int64(input.Amount),
+		Date:      input.Date,
+	}
+	if t.ToAccountID, err = parseOptionalID(input.ToAccountID); err != nil {
+		return nil, err
+	}
+	if t.CategoryID, err = parseOptionalID(input.CategoryID); err != nil {
+		return nil, err
+	}
+	if input.Description != nil {
+		t.Description = *input.Description
+	}
+	if input.Merchant != nil {
+		t.Merchant = *input.Merchant
+	}
+	if input.Notes != nil {
+		t.Notes = *input.Notes
+	}
+	tagIDs, err := parseIDs(input.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range tagIDs {
+		t.Tags = append(t.Tags, domain.Tag{ID: id})
+	}
+	if t.Splits, err = parseSplits(input.Splits); err != nil {
+		return nil, err
+	}
+	return t, nil
+}

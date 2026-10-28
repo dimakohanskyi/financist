@@ -81,3 +81,23 @@ func TestTransactionDelete(t *testing.T) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestTransactionListFilters(t *testing.T) {
+	r := NewTransactionRepo(withAccounts(t, newTestDB(t)))
+	ctx := context.Background()
+	jan := time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC)
+	for _, tx := range []*model.Transaction{
+		{AccountID: 1, Type: model.TransactionExpense, Amount: 100, Merchant: "Silpo", Date: jan},
+		{AccountID: 1, Type: model.TransactionExpense, Amount: 300, Merchant: "Silpo", Date: jan.AddDate(0, 1, 0)},
+		{AccountID: 1, Type: model.TransactionExpense, Amount: 200, Merchant: "ATB", Date: jan.AddDate(0, 1, 0)},
+	} {
+		if err := r.Create(ctx, tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	from := jan.AddDate(0, 0, 1)
+	got, total, err := r.List(ctx, model.TransactionFilter{Search: "silpo", From: &from, Sort: model.SortAmountDesc, Limit: 10})
+	if err != nil || total != 1 || got[0].Amount != 300 {
+		t.Fatalf("got %+v, total %d, err %v", got, total, err)
+	}
+}
