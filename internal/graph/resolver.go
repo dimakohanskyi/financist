@@ -16,14 +16,15 @@ import (
 // here.
 
 type Resolver struct {
-	AccountRepo *repository.AccountRepo
-	TxService   *service.TransactionService
-	CategorySvc *service.CategoryService
-	TagRepo     *repository.TagRepo
-	Recurring   *service.RecurringService
-	BudgetSvc   *service.BudgetService
-	GoalRepo    *repository.GoalRepo
-	AssetRepo   *repository.AssetRepo
+	AccountRepo  *repository.AccountRepo
+	TxService    *service.TransactionService
+	CategorySvc  *service.CategoryService
+	TagRepo      *repository.TagRepo
+	Recurring    *service.RecurringService
+	BudgetSvc    *service.BudgetService
+	GoalRepo     *repository.GoalRepo
+	AssetRepo    *repository.AssetRepo
+	SettingsRepo *repository.SettingsRepo
 }
 
 // category loads a category for a nested field. ponytail: one query per

@@ -191,6 +191,22 @@ type RecurringTransaction struct {
 	DaysUntilDue int32 `json:"daysUntilDue"`
 }
 
+// App-wide settings. Thresholds drive the alerts query
+type Settings struct {
+	// Display currency; amounts are never converted
+	Currency Currency `json:"currency"`
+	// Complete months of negative cash flow in a row before alerting
+	NegativeCashFlowThresholdMonths int32 `json:"negativeCashFlowThresholdMonths"`
+	// Complete months of falling net worth in a row before alerting
+	NetWorthDeclineThresholdMonths int32 `json:"netWorthDeclineThresholdMonths"`
+	// Max % of capital in medium/high risk
+	RiskyAllocationThresholdPercent int32 `json:"riskyAllocationThresholdPercent"`
+	// A cash account at or above this balance...
+	IdleCashThresholdAmount int `json:"idleCashThresholdAmount"`
+	// ...untouched for this many days is idle
+	IdleCashThresholdDays int32 `json:"idleCashThresholdDays"`
+}
+
 // A free-form label, e.g. a trip or project. Categories say what kind of spend it is
 type Tag struct {
 	ID   string `json:"id"`
@@ -287,6 +303,16 @@ type UpdateRecurringTransactionInput struct {
 	Frequency   *RecurringFrequency        `json:"frequency,omitempty"`
 	AnchorDate  *time.Time                 `json:"anchorDate,omitempty"`
 	IsActive    *bool                      `json:"isActive,omitempty"`
+}
+
+// Months 1-24, percent 1-100, days 1-365
+type UpdateSettingsInput struct {
+	Currency                        *Currency `json:"currency,omitempty"`
+	NegativeCashFlowThresholdMonths *int32    `json:"negativeCashFlowThresholdMonths,omitempty"`
+	NetWorthDeclineThresholdMonths  *int32    `json:"netWorthDeclineThresholdMonths,omitempty"`
+	RiskyAllocationThresholdPercent *int32    `json:"riskyAllocationThresholdPercent,omitempty"`
+	IdleCashThresholdAmount         *int      `json:"idleCashThresholdAmount,omitempty"`
+	IdleCashThresholdDays           *int32    `json:"idleCashThresholdDays,omitempty"`
 }
 
 // Omitted fields are left unchanged. Changing type away from transfer clears toAccountId

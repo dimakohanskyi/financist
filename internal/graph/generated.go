@@ -135,6 +135,7 @@ type ComplexityRoot struct {
 		UpdateCategory             func(childComplexity int, id string, input model.UpdateCategoryInput) int
 		UpdateGoal                 func(childComplexity int, id string, input model.UpdateGoalInput) int
 		UpdateRecurringTransaction func(childComplexity int, id string, input model.UpdateRecurringTransactionInput) int
+		UpdateSettings             func(childComplexity int, input model.UpdateSettingsInput) int
 		UpdateTransaction          func(childComplexity int, id string, input model.UpdateTransactionInput) int
 	}
 
@@ -150,6 +151,7 @@ type ComplexityRoot struct {
 		Goals                 func(childComplexity int) int
 		Ping                  func(childComplexity int) int
 		RecurringTransactions func(childComplexity int) int
+		Settings              func(childComplexity int) int
 		Tags                  func(childComplexity int) int
 		Transaction           func(childComplexity int, id string) int
 		TransactionYears      func(childComplexity int) int
@@ -173,6 +175,15 @@ type ComplexityRoot struct {
 		Notes          func(childComplexity int) int
 		ToAccountID    func(childComplexity int) int
 		Type           func(childComplexity int) int
+	}
+
+	Settings struct {
+		Currency                        func(childComplexity int) int
+		IdleCashThresholdAmount         func(childComplexity int) int
+		IdleCashThresholdDays           func(childComplexity int) int
+		NegativeCashFlowThresholdMonths func(childComplexity int) int
+		NetWorthDeclineThresholdMonths  func(childComplexity int) int
+		RiskyAllocationThresholdPercent func(childComplexity int) int
 	}
 
 	Tag struct {
@@ -243,6 +254,7 @@ type MutationResolver interface {
 	UpdateRecurringTransaction(ctx context.Context, id string, input model.UpdateRecurringTransactionInput) (*model.RecurringTransaction, error)
 	DeleteRecurringTransaction(ctx context.Context, id string) (bool, error)
 	PostRecurringTransaction(ctx context.Context, id string) (*model.RecurringTransaction, error)
+	UpdateSettings(ctx context.Context, input model.UpdateSettingsInput) (*model.Settings, error)
 	CreateTag(ctx context.Context, name string) (*model.Tag, error)
 	DeleteTag(ctx context.Context, id string) (bool, error)
 	CreateTransaction(ctx context.Context, input model.CreateTransactionInput) (*model.Transaction, error)
@@ -262,6 +274,7 @@ type QueryResolver interface {
 	Categories(ctx context.Context, kind *model.CategoryKind) ([]*model.Category, error)
 	Goals(ctx context.Context) ([]*model.Goal, error)
 	RecurringTransactions(ctx context.Context) ([]*model.RecurringTransaction, error)
+	Settings(ctx context.Context) (*model.Settings, error)
 	Tags(ctx context.Context) ([]*model.Tag, error)
 	Transaction(ctx context.Context, id string) (*model.Transaction, error)
 	Transactions(ctx context.Context, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) (*model.TransactionPage, error)
@@ -855,6 +868,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateRecurringTransaction(childComplexity, args["id"].(string), args["input"].(model.UpdateRecurringTransactionInput)), true
+	case "Mutation.updateSettings":
+		if e.ComplexityRoot.Mutation.UpdateSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateSettings(childComplexity, args["input"].(model.UpdateSettingsInput)), true
 	case "Mutation.updateTransaction":
 		if e.ComplexityRoot.Mutation.UpdateTransaction == nil {
 			break
@@ -964,6 +988,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RecurringTransactions(childComplexity), true
+	case "Query.settings":
+		if e.ComplexityRoot.Query.Settings == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Settings(childComplexity), true
 	case "Query.tags":
 		if e.ComplexityRoot.Query.Tags == nil {
 			break
@@ -1095,6 +1125,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RecurringTransaction.Type(childComplexity), true
+
+	case "Settings.currency":
+		if e.ComplexityRoot.Settings.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.Currency(childComplexity), true
+	case "Settings.idleCashThresholdAmount":
+		if e.ComplexityRoot.Settings.IdleCashThresholdAmount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.IdleCashThresholdAmount(childComplexity), true
+	case "Settings.idleCashThresholdDays":
+		if e.ComplexityRoot.Settings.IdleCashThresholdDays == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.IdleCashThresholdDays(childComplexity), true
+	case "Settings.negativeCashFlowThresholdMonths":
+		if e.ComplexityRoot.Settings.NegativeCashFlowThresholdMonths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.NegativeCashFlowThresholdMonths(childComplexity), true
+	case "Settings.netWorthDeclineThresholdMonths":
+		if e.ComplexityRoot.Settings.NetWorthDeclineThresholdMonths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.NetWorthDeclineThresholdMonths(childComplexity), true
+	case "Settings.riskyAllocationThresholdPercent":
+		if e.ComplexityRoot.Settings.RiskyAllocationThresholdPercent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Settings.RiskyAllocationThresholdPercent(childComplexity), true
 
 	case "Tag.id":
 		if e.ComplexityRoot.Tag.ID == nil {
@@ -1240,6 +1307,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateCategoryInput,
 		ec.unmarshalInputUpdateGoalInput,
 		ec.unmarshalInputUpdateRecurringTransactionInput,
+		ec.unmarshalInputUpdateSettingsInput,
 		ec.unmarshalInputUpdateTransactionInput,
 	)
 	first := true
@@ -1315,7 +1383,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema.graphqls" "account/account.graphqls" "asset/asset.graphqls" "budget/budget.graphqls" "category/category.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
+//go:embed "schema.graphqls" "account/account.graphqls" "asset/asset.graphqls" "budget/budget.graphqls" "category/category.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "settings/settings.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1334,6 +1402,7 @@ var sources = []*ast.Source{
 	{Name: "category/category.graphqls", Input: sourceData("category/category.graphqls"), BuiltIn: false},
 	{Name: "goal/goal.graphqls", Input: sourceData("goal/goal.graphqls"), BuiltIn: false},
 	{Name: "recurring/recurring.graphqls", Input: sourceData("recurring/recurring.graphqls"), BuiltIn: false},
+	{Name: "settings/settings.graphqls", Input: sourceData("settings/settings.graphqls"), BuiltIn: false},
 	{Name: "tag/tag.graphqls", Input: sourceData("tag/tag.graphqls"), BuiltIn: false},
 	{Name: "transaction/transaction.graphqls", Input: sourceData("transaction/transaction.graphqls"), BuiltIn: false},
 }
@@ -1513,6 +1582,24 @@ func (ec *executionContext) childFields_RecurringTransaction(ctx context.Context
 		return ec.fieldContext_RecurringTransaction_daysUntilDue(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type RecurringTransaction", field.Name)
+}
+
+func (ec *executionContext) childFields_Settings(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "currency":
+		return ec.fieldContext_Settings_currency(ctx, field)
+	case "negativeCashFlowThresholdMonths":
+		return ec.fieldContext_Settings_negativeCashFlowThresholdMonths(ctx, field)
+	case "netWorthDeclineThresholdMonths":
+		return ec.fieldContext_Settings_netWorthDeclineThresholdMonths(ctx, field)
+	case "riskyAllocationThresholdPercent":
+		return ec.fieldContext_Settings_riskyAllocationThresholdPercent(ctx, field)
+	case "idleCashThresholdAmount":
+		return ec.fieldContext_Settings_idleCashThresholdAmount(ctx, field)
+	case "idleCashThresholdDays":
+		return ec.fieldContext_Settings_idleCashThresholdDays(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Settings", field.Name)
 }
 
 func (ec *executionContext) childFields_Tag(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2152,6 +2239,20 @@ func (ec *executionContext) field_Mutation_updateRecurringTransaction_args(ctx c
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateSettingsInput, error) {
+			return ec.unmarshalNUpdateSettingsInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateSettingsInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -4452,6 +4553,50 @@ func (ec *executionContext) fieldContext_Mutation_postRecurringTransaction(ctx c
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateSettings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateSettings(ctx, fc.Args["input"].(model.UpdateSettingsInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Settings) graphql.Marshaler {
+			return ec.marshalNSettings2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Settings(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createTag(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5131,6 +5276,38 @@ func (ec *executionContext) fieldContext_Query_recurringTransactions(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_settings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_settings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Settings(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Settings) graphql.Marshaler {
+			return ec.marshalNSettings2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_settings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Settings(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_tags(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5716,6 +5893,144 @@ func (ec *executionContext) _RecurringTransaction_daysUntilDue(ctx context.Conte
 }
 func (ec *executionContext) fieldContext_RecurringTransaction_daysUntilDue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_currency(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_negativeCashFlowThresholdMonths(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_negativeCashFlowThresholdMonths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NegativeCashFlowThresholdMonths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_negativeCashFlowThresholdMonths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_netWorthDeclineThresholdMonths(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_netWorthDeclineThresholdMonths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NetWorthDeclineThresholdMonths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_netWorthDeclineThresholdMonths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_riskyAllocationThresholdPercent(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_riskyAllocationThresholdPercent(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RiskyAllocationThresholdPercent, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_riskyAllocationThresholdPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_idleCashThresholdAmount(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_idleCashThresholdAmount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IdleCashThresholdAmount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_idleCashThresholdAmount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Settings_idleCashThresholdDays(ctx context.Context, field graphql.CollectedField, obj *model.Settings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Settings_idleCashThresholdDays(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IdleCashThresholdDays, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Settings_idleCashThresholdDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Settings", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Tag_id(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
@@ -8126,6 +8441,71 @@ func (ec *executionContext) unmarshalInputUpdateRecurringTransactionInput(ctx co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateSettingsInput(ctx context.Context, obj any) (model.UpdateSettingsInput, error) {
+	var it model.UpdateSettingsInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"currency", "negativeCashFlowThresholdMonths", "netWorthDeclineThresholdMonths", "riskyAllocationThresholdPercent", "idleCashThresholdAmount", "idleCashThresholdDays"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOCurrency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "negativeCashFlowThresholdMonths":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("negativeCashFlowThresholdMonths"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NegativeCashFlowThresholdMonths = data
+		case "netWorthDeclineThresholdMonths":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("netWorthDeclineThresholdMonths"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NetWorthDeclineThresholdMonths = data
+		case "riskyAllocationThresholdPercent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("riskyAllocationThresholdPercent"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RiskyAllocationThresholdPercent = data
+		case "idleCashThresholdAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idleCashThresholdAmount"))
+			data, err := ec.unmarshalOInt642ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IdleCashThresholdAmount = data
+		case "idleCashThresholdDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idleCashThresholdDays"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IdleCashThresholdDays = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Context, obj any) (model.UpdateTransactionInput, error) {
 	var it model.UpdateTransactionInput
 	if obj == nil {
@@ -8961,6 +9341,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createTag":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createTag(ctx, field)
@@ -9286,6 +9673,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "settings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_settings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "tags":
 			field := field
 
@@ -9498,6 +9907,69 @@ func (ec *executionContext) _RecurringTransaction(ctx context.Context, sel ast.S
 			}
 		case "daysUntilDue":
 			out.Values[i] = ec._RecurringTransaction_daysUntilDue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var settingsImplementors = []string{"Settings"}
+
+func (ec *executionContext) _Settings(ctx context.Context, sel ast.SelectionSet, obj *model.Settings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, settingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Settings")
+		case "currency":
+			out.Values[i] = ec._Settings_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "negativeCashFlowThresholdMonths":
+			out.Values[i] = ec._Settings_negativeCashFlowThresholdMonths(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "netWorthDeclineThresholdMonths":
+			out.Values[i] = ec._Settings_netWorthDeclineThresholdMonths(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "riskyAllocationThresholdPercent":
+			out.Values[i] = ec._Settings_riskyAllocationThresholdPercent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "idleCashThresholdAmount":
+			out.Values[i] = ec._Settings_idleCashThresholdAmount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "idleCashThresholdDays":
+			out.Values[i] = ec._Settings_idleCashThresholdDays(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -10582,6 +11054,16 @@ func (ec *executionContext) marshalNRiskLevel2githubᚗcomᚋdimakohanskyiᚋfin
 	return v
 }
 
+func (ec *executionContext) marshalNSettings2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐSettings(ctx context.Context, sel ast.SelectionSet, v *model.Settings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Settings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -10739,6 +11221,11 @@ func (ec *executionContext) unmarshalNUpdateGoalInput2githubᚗcomᚋdimakohansk
 
 func (ec *executionContext) unmarshalNUpdateRecurringTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateRecurringTransactionInput(ctx context.Context, v any) (model.UpdateRecurringTransactionInput, error) {
 	res, err := ec.unmarshalInputUpdateRecurringTransactionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateSettingsInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateSettingsInput(ctx context.Context, v any) (model.UpdateSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

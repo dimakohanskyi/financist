@@ -52,14 +52,15 @@ func main() {
 	txService := service.NewTransactionService(txRepo, accountRepo, categoryRepo)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
-		AccountRepo: accountRepo,
-		TxService:   txService,
-		CategorySvc: service.NewCategoryService(categoryRepo),
-		TagRepo:     repository.NewTagRepo(gormDB),
-		Recurring:   service.NewRecurringService(repository.NewRecurringRepo(gormDB), txService),
-		BudgetSvc:   service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, txRepo),
-		GoalRepo:    repository.NewGoalRepo(gormDB),
-		AssetRepo:   repository.NewAssetRepo(gormDB),
+		AccountRepo:  accountRepo,
+		TxService:    txService,
+		CategorySvc:  service.NewCategoryService(categoryRepo),
+		TagRepo:      repository.NewTagRepo(gormDB),
+		Recurring:    service.NewRecurringService(repository.NewRecurringRepo(gormDB), txService),
+		BudgetSvc:    service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, txRepo),
+		GoalRepo:     repository.NewGoalRepo(gormDB),
+		AssetRepo:    repository.NewAssetRepo(gormDB),
+		SettingsRepo: repository.NewSettingsRepo(gormDB),
 	}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

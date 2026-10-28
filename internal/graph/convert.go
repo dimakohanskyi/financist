@@ -233,3 +233,22 @@ func toAsset(a *domain.Asset) *model.Asset {
 	}
 	return out
 }
+
+func toSettings(s *domain.Settings) *model.Settings {
+	return &model.Settings{
+		Currency:                        model.Currency(s.Currency),
+		NegativeCashFlowThresholdMonths: int32(s.NegativeCashFlowThresholdMonths),
+		NetWorthDeclineThresholdMonths:  int32(s.NetWorthDeclineThresholdMonths),
+		RiskyAllocationThresholdPercent: int32(s.RiskyAllocationThresholdPercent),
+		IdleCashThresholdAmount:         int(s.IdleCashThresholdAmount),
+		IdleCashThresholdDays:           int32(s.IdleCashThresholdDays),
+	}
+}
+
+func intPtr(v *int32) *int {
+	if v == nil {
+		return nil
+	}
+	n := int(*v)
+	return &n
+}
