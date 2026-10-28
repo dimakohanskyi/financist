@@ -12,8 +12,17 @@ import (
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	domain "github.com/dimakohanskyi/financist/internal/model"
-	"gorm.io/gorm"
 )
+
+// Balance is the resolver for the balance field.
+func (r *accountResolver) Balance(ctx context.Context, obj *model.Account) (int, error) {
+	id, err := parseID(obj.ID)
+	if err != nil {
+		return 0, err
+	}
+	balance, err := r.AccountRepo.Balance(ctx, id)
+	return int(balance), err
+}
 
 // CreateAccount is the resolver for the createAccount field.
 func (r *mutationResolver) CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error) {
@@ -21,6 +30,7 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input model.Create
 		Name:        input.Name,
 		AccountType: string(input.AccountType),
 		Currency:    string(input.Currency),
+		Color:       input.Color,
 	}
 	if err := r.AccountRepo.Create(ctx, acc); err != nil {
 		return nil, err
@@ -34,7 +44,7 @@ func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input m
 	if err != nil {
 		return nil, err
 	}
-	u := domain.AccountUpdate{Name: input.Name, IsArchived: input.IsArchived}
+	u := domain.AccountUpdate{Name: input.Name, Color: input.Color, IsArchived: input.IsArchived}
 	if input.AccountType != nil {
 		v := string(*input.AccountType)
 		u.AccountType = &v
@@ -66,7 +76,7 @@ func (r *queryResolver) Account(ctx context.Context, id string) (*model.Account,
 		return nil, err
 	}
 	acc, err := r.AccountRepo.GetByID(ctx, n)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, domain.ErrNotFound) {
 		return nil, nil // account is nullable in the schema
 	}
 	if err != nil {
@@ -87,3 +97,8 @@ func (r *queryResolver) Accounts(ctx context.Context, includeArchived *bool) ([]
 	}
 	return out, nil
 }
+
+// Account returns AccountResolver implementation.
+func (r *Resolver) Account() AccountResolver { return &accountResolver{r} }
+
+type accountResolver struct{ *Resolver }

@@ -1,0 +1,85 @@
+enum AssetClass {
+  investments
+  real_estate
+  vehicles
+  precious_metals
+  other
+}
+
+"How an asset behaves month to month, set by the user"
+enum CapitalRole {
+  income
+  neutral
+  drain
+}
+
+"Risk of losing value, set by the user"
+enum RiskLevel {
+  low
+  medium
+  high
+}
+
+"A manually valued part of net worth. Cash isn't one: it comes from account balances"
+type Asset {
+  id: ID!
+  name: String!
+  assetClass: AssetClass!
+  currency: Currency!
+  notes: String!
+  capitalRole: CapitalRole!
+  "Rough self-reported net per month, informational only"
+  monthlyCashFlow: Int64
+  riskLevel: RiskLevel!
+  "Latest valuation"
+  currentValue: Int64!
+  asOfDate: Time
+  "Oldest first"
+  valuations: [AssetValuation!]! @goField(forceResolver: true)
+}
+
+type AssetValuation {
+  id: ID!
+  value: Int64!
+  asOfDate: Time!
+}
+
+extend type Query {
+  "Sorted by name"
+  assets: [Asset!]!
+  asset(id: ID!): Asset
+}
+
+input CreateAssetInput {
+  name: String!
+  assetClass: AssetClass!
+  currency: Currency! = USD
+  notes: String = ""
+  capitalRole: CapitalRole! = neutral
+  monthlyCashFlow: Int64
+  riskLevel: RiskLevel! = medium
+  "First valuation"
+  value: Int64!
+  "Defaults to today"
+  asOfDate: Time
+}
+
+input UpdateAssetInput {
+  name: String
+  assetClass: AssetClass
+  currency: Currency
+  notes: String
+  capitalRole: CapitalRole
+  "null clears it"
+  monthlyCashFlow: Int64 @goField(omittable: true)
+  riskLevel: RiskLevel
+}
+
+extend type Mutation {
+  createAsset(input: CreateAssetInput!): Asset!
+  updateAsset(id: ID!, input: UpdateAssetInput!): Asset!
+  "Removes its valuations too"
+  deleteAsset(id: ID!): Boolean!
+  "Records the value as of a day (default today); the same day again overwrites it"
+  addAssetValuation(assetId: ID!, value: Int64!, asOfDate: Time): Asset!
+}

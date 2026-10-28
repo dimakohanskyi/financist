@@ -1,5 +1,6 @@
 enum AccountType {
   checking
+  debit_card
   savings
   credit_card
   cash
@@ -19,7 +20,11 @@ type Account {
   name: String!
   accountType: AccountType!
   currency: Currency!
+  "Hex like #2a78d6"
+  color: String
   isArchived: Boolean!
+  "Minor units. Income adds, expense subtracts, transfers move money between accounts"
+  balance: Int64! @goField(forceResolver: true)
 }
 
 extend type Query {
@@ -31,12 +36,15 @@ input CreateAccountInput {
   name: String!
   accountType: AccountType!
   currency: Currency!
+  color: String
 }
 
 input UpdateAccountInput {
   name: String
   accountType: AccountType
   currency: Currency
+  "Empty string clears it"
+  color: String
   isArchived: Boolean
 }
 

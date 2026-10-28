@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dimakohanskyi/financist/internal/model"
 	"gorm.io/gorm"
@@ -13,6 +14,7 @@ type accountRow struct {
 	Name        string
 	AccountType string
 	Currency    string
+	Color       *string
 	IsArchived  bool
 }
 
@@ -37,6 +39,9 @@ func (r *AccountRepo) Create(ctx context.Context, a *model.Account) error {
 
 func (r *AccountRepo) GetByID(ctx context.Context, id int64) (model.Account, error) {
 	row, err := gorm.G[accountRow](r.db).Where("id = ?", id).First(ctx)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = model.ErrNotFound
+	}
 	return row.toModel(), err
 }
 
@@ -64,6 +69,9 @@ func (r *AccountRepo) Update(ctx context.Context, id int64, u model.AccountUpdat
 	if u.Currency != nil {
 		fields["currency"] = *u.Currency
 	}
+	if u.Color != nil {
+		fields["color"] = nullIfEmpty(*u.Color)
+	}
 	if u.IsArchived != nil {
 		fields["is_archived"] = *u.IsArchived
 	}
@@ -80,4 +88,24 @@ func (r *AccountRepo) Archive(ctx context.Context, id int64) error {
 	archived := true
 	_, err := r.Update(ctx, id, model.AccountUpdate{IsArchived: &archived})
 	return err
+}
+
+// Balance sums the account's transactions: income adds, expense subtracts,
+// a transfer moves money from account_id to to_account_id.
+func (r *AccountRepo) Balance(ctx context.Context, id int64) (int64, error) {
+	var balance int64
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT COALESCE(SUM(CASE
+			WHEN account_id <> ? THEN amount
+			WHEN type = 'income' THEN amount
+			ELSE -amount END), 0)
+		FROM transactions WHERE account_id = ? OR to_account_id = ?`, id, id, id).Scan(&balance).Error
+	return balance, err
+}
+
+func nullIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

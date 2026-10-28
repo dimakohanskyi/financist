@@ -1,0 +1,17 @@
+"A free-form label, e.g. a trip or project. Categories say what kind of spend it is"
+type Tag {
+  id: ID!
+  name: String!
+}
+
+extend type Query {
+  "Sorted by name"
+  tags: [Tag!]!
+}
+
+extend type Mutation {
+  "Returns the existing tag if one has the same name, ignoring case"
+  createTag(name: String!): Tag!
+  "Removes it from every transaction"
+  deleteTag(id: ID!): Boolean!
+}

@@ -1,0 +1,33 @@
+"App-wide settings. Thresholds drive the alerts query"
+type Settings {
+  "Display currency; amounts are never converted"
+  currency: Currency!
+  "Complete months of negative cash flow in a row before alerting"
+  negativeCashFlowThresholdMonths: Int!
+  "Complete months of falling net worth in a row before alerting"
+  netWorthDeclineThresholdMonths: Int!
+  "Max % of capital in medium/high risk"
+  riskyAllocationThresholdPercent: Int!
+  "A cash account at or above this balance..."
+  idleCashThresholdAmount: Int64!
+  "...untouched for this many days is idle"
+  idleCashThresholdDays: Int!
+}
+
+extend type Query {
+  settings: Settings!
+}
+
+"Months 1-24, percent 1-100, days 1-365"
+input UpdateSettingsInput {
+  currency: Currency
+  negativeCashFlowThresholdMonths: Int
+  netWorthDeclineThresholdMonths: Int
+  riskyAllocationThresholdPercent: Int
+  idleCashThresholdAmount: Int64
+  idleCashThresholdDays: Int
+}
+
+extend type Mutation {
+  updateSettings(input: UpdateSettingsInput!): Settings!
+}

@@ -1,0 +1,31 @@
+"A monthly spending limit on an expense category, covering its subcategories too"
+type Budget {
+  id: ID!
+  categoryId: ID!
+  category: Category! @goField(forceResolver: true)
+  monthlyLimit: Int64!
+}
+
+type BudgetStatus {
+  budget: Budget!
+  spent: Int64!
+  "Negative when over budget"
+  remaining: Int64!
+  "Can exceed 100"
+  percent: Float!
+  isOverBudget: Boolean!
+}
+
+extend type Query {
+  "In category display order"
+  budgets: [Budget!]!
+  "Spending against each budget; defaults to the current month"
+  budgetStatus(year: Int, month: Int): [BudgetStatus!]!
+}
+
+extend type Mutation {
+  "One budget per expense category"
+  createBudget(categoryId: ID!, monthlyLimit: Int64!): Budget!
+  updateBudget(id: ID!, monthlyLimit: Int64!): Budget!
+  deleteBudget(id: ID!): Boolean!
+}

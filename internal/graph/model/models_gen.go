@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
+
+	"github.com/99designs/gqlgen/graphql"
 )
 
 type Account struct {
@@ -14,32 +17,445 @@ type Account struct {
 	Name        string      `json:"name"`
 	AccountType AccountType `json:"accountType"`
 	Currency    Currency    `json:"currency"`
-	IsArchived  bool        `json:"isArchived"`
+	// Hex like #2a78d6
+	Color      *string `json:"color,omitempty"`
+	IsArchived bool    `json:"isArchived"`
+	// Minor units. Income adds, expense subtracts, transfers move money between accounts
+	Balance int `json:"balance"`
+}
+
+// A manually valued part of net worth. Cash isn't one: it comes from account balances
+type Asset struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	AssetClass  AssetClass  `json:"assetClass"`
+	Currency    Currency    `json:"currency"`
+	Notes       string      `json:"notes"`
+	CapitalRole CapitalRole `json:"capitalRole"`
+	// Rough self-reported net per month, informational only
+	MonthlyCashFlow *int      `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       RiskLevel `json:"riskLevel"`
+	// Latest valuation
+	CurrentValue int        `json:"currentValue"`
+	AsOfDate     *time.Time `json:"asOfDate,omitempty"`
+	// Oldest first
+	Valuations []*AssetValuation `json:"valuations"`
+}
+
+type AssetValuation struct {
+	ID       string    `json:"id"`
+	Value    int       `json:"value"`
+	AsOfDate time.Time `json:"asOfDate"`
+}
+
+// A monthly spending limit on an expense category, covering its subcategories too
+type Budget struct {
+	ID           string    `json:"id"`
+	CategoryID   string    `json:"categoryId"`
+	Category     *Category `json:"category"`
+	MonthlyLimit int       `json:"monthlyLimit"`
+}
+
+type BudgetStatus struct {
+	Budget *Budget `json:"budget"`
+	Spent  int     `json:"spent"`
+	// Negative when over budget
+	Remaining int `json:"remaining"`
+	// Can exceed 100
+	Percent      float64 `json:"percent"`
+	IsOverBudget bool    `json:"isOverBudget"`
+}
+
+type CapitalRoleSummary struct {
+	Role            CapitalRole `json:"role"`
+	TotalValue      int         `json:"totalValue"`
+	MonthlyCashFlow int         `json:"monthlyCashFlow"`
+	Count           int32       `json:"count"`
+}
+
+type CashFlow struct {
+	// The data's own span when not given
+	From *time.Time `json:"from,omitempty"`
+	To   *time.Time `json:"to,omitempty"`
+	// Every month in the span, empty ones included
+	Months       []*CashFlowMonth `json:"months"`
+	TotalIncome  int              `json:"totalIncome"`
+	TotalExpense int              `json:"totalExpense"`
+	TotalNet     int              `json:"totalNet"`
+}
+
+type CashFlowMonth struct {
+	Year    int32 `json:"year"`
+	Month   int32 `json:"month"`
+	Income  int   `json:"income"`
+	Expense int   `json:"expense"`
+	Net     int   `json:"net"`
+}
+
+type Category struct {
+	ID   string       `json:"id"`
+	Name string       `json:"name"`
+	Kind CategoryKind `json:"kind"`
+	// Lucide icon name
+	Icon *string `json:"icon,omitempty"`
+	// Hex like #2a78d6
+	Color     string `json:"color"`
+	SortOrder int32  `json:"sortOrder"`
+	// Seeded defaults can only be deleted once unused
+	IsDefault bool `json:"isDefault"`
+	// Subcategories are one level deep
+	ParentID *string `json:"parentId,omitempty"`
+}
+
+// A top-level category's total, its subcategories and split lines rolled in
+type CategoryAmount struct {
+	// null for the slice holding everything past the top few
+	CategoryID       *string   `json:"categoryId,omitempty"`
+	Category         *Category `json:"category,omitempty"`
+	Amount           int       `json:"amount"`
+	Percent          float64   `json:"percent"`
+	TransactionCount int32     `json:"transactionCount"`
+	// Where the amount came from, set only when more than one category fed it
+	Children []*CategoryAmount `json:"children"`
+}
+
+type CategoryRanking struct {
+	From  *time.Time        `json:"from,omitempty"`
+	To    *time.Time        `json:"to,omitempty"`
+	Total int               `json:"total"`
+	Items []*CategoryAmount `json:"items"`
+}
+
+type CategorySpending struct {
+	CategoryID       string         `json:"categoryId"`
+	Category         *Category      `json:"category"`
+	From             *time.Time     `json:"from,omitempty"`
+	To               *time.Time     `json:"to,omitempty"`
+	Total            int            `json:"total"`
+	TransactionCount int32          `json:"transactionCount"`
+	AveragePerMonth  int            `json:"averagePerMonth"`
+	Months           []*MonthAmount `json:"months"`
 }
 
 type CreateAccountInput struct {
 	Name        string      `json:"name"`
 	AccountType AccountType `json:"accountType"`
 	Currency    Currency    `json:"currency"`
+	Color       *string     `json:"color,omitempty"`
+}
+
+type CreateAssetInput struct {
+	Name            string      `json:"name"`
+	AssetClass      AssetClass  `json:"assetClass"`
+	Currency        Currency    `json:"currency"`
+	Notes           *string     `json:"notes,omitempty"`
+	CapitalRole     CapitalRole `json:"capitalRole"`
+	MonthlyCashFlow *int        `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       RiskLevel   `json:"riskLevel"`
+	// First valuation
+	Value int `json:"value"`
+	// Defaults to today
+	AsOfDate *time.Time `json:"asOfDate,omitempty"`
+}
+
+type CreateCategoryInput struct {
+	Name      string       `json:"name"`
+	Kind      CategoryKind `json:"kind"`
+	Icon      *string      `json:"icon,omitempty"`
+	Color     string       `json:"color"`
+	SortOrder *int32       `json:"sortOrder,omitempty"`
+	// Must be a top-level category of the same kind
+	ParentID *string `json:"parentId,omitempty"`
+}
+
+type CreateGoalInput struct {
+	Name         string     `json:"name"`
+	TargetAmount int        `json:"targetAmount"`
+	TargetDate   *time.Time `json:"targetDate,omitempty"`
+}
+
+type CreateRecurringTransactionInput struct {
+	AccountID   string             `json:"accountId"`
+	ToAccountID *string            `json:"toAccountId,omitempty"`
+	CategoryID  *string            `json:"categoryId,omitempty"`
+	Type        TransactionType    `json:"type"`
+	Amount      int                `json:"amount"`
+	Description *string            `json:"description,omitempty"`
+	Merchant    *string            `json:"merchant,omitempty"`
+	Notes       *string            `json:"notes,omitempty"`
+	Frequency   RecurringFrequency `json:"frequency"`
+	AnchorDate  time.Time          `json:"anchorDate"`
+}
+
+type CreateTransactionInput struct {
+	AccountID string `json:"accountId"`
+	// Only for transfers
+	ToAccountID *string         `json:"toAccountId,omitempty"`
+	CategoryID  *string         `json:"categoryId,omitempty"`
+	Type        TransactionType `json:"type"`
+	Amount      int             `json:"amount"`
+	// First letter is capitalized
+	Description *string   `json:"description,omitempty"`
+	Merchant    *string   `json:"merchant,omitempty"`
+	Notes       *string   `json:"notes,omitempty"`
+	Date        time.Time `json:"date"`
+	TagIds      []string  `json:"tagIds,omitempty"`
+	// Instead of categoryId
+	Splits []*TransactionSplitInput `json:"splits,omitempty"`
+}
+
+// One month at a glance. Transfers between your accounts aren't income or spending
+type Dashboard struct {
+	Year           int32 `json:"year"`
+	Month          int32 `json:"month"`
+	Income         int   `json:"income"`
+	Spent          int   `json:"spent"`
+	Net            int   `json:"net"`
+	TransferredOut int   `json:"transferredOut"`
+	// Top 8 by amount, the rest folded into one slice
+	SpendingByCategory []*CategoryAmount `json:"spendingByCategory"`
+}
+
+type DatedAmount struct {
+	Date   time.Time `json:"date"`
+	Amount int       `json:"amount"`
+}
+
+// A savings goal tracked by a log of contributions
+type Goal struct {
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	TargetAmount int        `json:"targetAmount"`
+	TargetDate   *time.Time `json:"targetDate,omitempty"`
+	// Sum of all contributions
+	CurrentAmount int     `json:"currentAmount"`
+	Remaining     int     `json:"remaining"`
+	Percent       float64 `json:"percent"`
+	IsReached     bool    `json:"isReached"`
+}
+
+type MonthAmount struct {
+	Year   int32 `json:"year"`
+	Month  int32 `json:"month"`
+	Amount int   `json:"amount"`
 }
 
 type Mutation struct {
 }
 
+// Cash from cash-like account balances plus each asset's latest value
+type NetWorth struct {
+	Current      int `json:"current"`
+	ChangeAmount int `json:"changeAmount"`
+	// null when the range starts at zero
+	ChangePercent *float64 `json:"changePercent,omitempty"`
+	// One point per day
+	Series []*DatedAmount `json:"series"`
+	// Cash first, then each asset class
+	Breakdown    []*NetWorthPart       `json:"breakdown"`
+	CapitalRoles []*CapitalRoleSummary `json:"capitalRoles"`
+	RiskLevels   []*RiskLevelSummary   `json:"riskLevels"`
+}
+
+type NetWorthPart struct {
+	// cash, an asset class, or asset:<id>
+	Key     string  `json:"key"`
+	Name    string  `json:"name"`
+	Amount  int     `json:"amount"`
+	Percent float64 `json:"percent"`
+}
+
+// An alert or a piece of advice; word it on the client from key and params
+type Notice struct {
+	Key string `json:"key"`
+	// severity for alerts, tone (positive, neutral, warning) for advice
+	Level  string         `json:"level"`
+	Params map[string]any `json:"params"`
+}
+
 type Query struct {
+}
+
+// A template for a transaction that repeats. Posting is manual, so missed periods never back-fill
+type RecurringTransaction struct {
+	ID          string             `json:"id"`
+	AccountID   string             `json:"accountId"`
+	ToAccountID *string            `json:"toAccountId,omitempty"`
+	CategoryID  *string            `json:"categoryId,omitempty"`
+	Type        TransactionType    `json:"type"`
+	Amount      int                `json:"amount"`
+	Description string             `json:"description"`
+	Merchant    string             `json:"merchant"`
+	Notes       string             `json:"notes"`
+	Frequency   RecurringFrequency `json:"frequency"`
+	// First due date
+	AnchorDate     time.Time  `json:"anchorDate"`
+	LastPostedDate *time.Time `json:"lastPostedDate,omitempty"`
+	// Paused templates keep their history
+	IsActive bool `json:"isActive"`
+	// anchorDate until the first post, then one period after the last post. Month ends clamp, Jan 31 -> Feb 28
+	NextDueDate time.Time `json:"nextDueDate"`
+	IsDue       bool      `json:"isDue"`
+	// Negative when overdue
+	DaysUntilDue int32 `json:"daysUntilDue"`
+}
+
+type RiskLevelSummary struct {
+	RiskLevel  RiskLevel `json:"riskLevel"`
+	TotalValue int       `json:"totalValue"`
+	// Share of all capital
+	Percent float64 `json:"percent"`
+	// Cash and assets in this tier; percent is their share of the tier
+	Items []*NetWorthPart `json:"items"`
+}
+
+// App-wide settings. Thresholds drive the alerts query
+type Settings struct {
+	// Display currency; amounts are never converted
+	Currency Currency `json:"currency"`
+	// Complete months of negative cash flow in a row before alerting
+	NegativeCashFlowThresholdMonths int32 `json:"negativeCashFlowThresholdMonths"`
+	// Complete months of falling net worth in a row before alerting
+	NetWorthDeclineThresholdMonths int32 `json:"netWorthDeclineThresholdMonths"`
+	// Max % of capital in medium/high risk
+	RiskyAllocationThresholdPercent int32 `json:"riskyAllocationThresholdPercent"`
+	// A cash account at or above this balance...
+	IdleCashThresholdAmount int `json:"idleCashThresholdAmount"`
+	// ...untouched for this many days is idle
+	IdleCashThresholdDays int32 `json:"idleCashThresholdDays"`
+}
+
+// A free-form label, e.g. a trip or project. Categories say what kind of spend it is
+type Tag struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Transaction struct {
+	ID          string  `json:"id"`
+	AccountID   string  `json:"accountId"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// Kind matches type; transfers and split transactions have none
+	CategoryID *string         `json:"categoryId,omitempty"`
+	Type       TransactionType `json:"type"`
+	// Minor units (cents), always positive
+	Amount      int       `json:"amount"`
+	Description string    `json:"description"`
+	Merchant    string    `json:"merchant"`
+	Notes       string    `json:"notes"`
+	Date        time.Time `json:"date"`
+	Tags        []*Tag    `json:"tags"`
+	// Empty unless the amount is divided across categories
+	Splits []*TransactionSplit `json:"splits"`
+}
+
+type TransactionPage struct {
+	Items []*Transaction `json:"items"`
+	// Number of matches across all pages
+	Total int32 `json:"total"`
+}
+
+// One category's share of a split transaction
+type TransactionSplit struct {
+	ID string `json:"id"`
+	// null once its category is deleted
+	CategoryID *string `json:"categoryId,omitempty"`
+	Amount     int     `json:"amount"`
+	Note       string  `json:"note"`
+}
+
+// Splits divide the amount across one parent category and its subcategories. Need 2+ parts that add up to the amount
+type TransactionSplitInput struct {
+	CategoryID string  `json:"categoryId"`
+	Amount     int     `json:"amount"`
+	Note       *string `json:"note,omitempty"`
 }
 
 type UpdateAccountInput struct {
 	Name        *string      `json:"name,omitempty"`
 	AccountType *AccountType `json:"accountType,omitempty"`
 	Currency    *Currency    `json:"currency,omitempty"`
-	IsArchived  *bool        `json:"isArchived,omitempty"`
+	// Empty string clears it
+	Color      *string `json:"color,omitempty"`
+	IsArchived *bool   `json:"isArchived,omitempty"`
+}
+
+type UpdateAssetInput struct {
+	Name        *string      `json:"name,omitempty"`
+	AssetClass  *AssetClass  `json:"assetClass,omitempty"`
+	Currency    *Currency    `json:"currency,omitempty"`
+	Notes       *string      `json:"notes,omitempty"`
+	CapitalRole *CapitalRole `json:"capitalRole,omitempty"`
+	// null clears it
+	MonthlyCashFlow graphql.Omittable[*int] `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       *RiskLevel              `json:"riskLevel,omitempty"`
+}
+
+type UpdateCategoryInput struct {
+	Name *string `json:"name,omitempty"`
+	// Empty string clears it
+	Icon      *string `json:"icon,omitempty"`
+	Color     *string `json:"color,omitempty"`
+	SortOrder *int32  `json:"sortOrder,omitempty"`
+	// null makes it top-level
+	ParentID graphql.Omittable[*string] `json:"parentId,omitempty"`
+}
+
+type UpdateGoalInput struct {
+	Name         *string `json:"name,omitempty"`
+	TargetAmount *int    `json:"targetAmount,omitempty"`
+	// null clears it
+	TargetDate graphql.Omittable[*time.Time] `json:"targetDate,omitempty"`
+}
+
+type UpdateRecurringTransactionInput struct {
+	AccountID   *string `json:"accountId,omitempty"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// null clears it
+	CategoryID  graphql.Omittable[*string] `json:"categoryId,omitempty"`
+	Type        *TransactionType           `json:"type,omitempty"`
+	Amount      *int                       `json:"amount,omitempty"`
+	Description *string                    `json:"description,omitempty"`
+	Merchant    *string                    `json:"merchant,omitempty"`
+	Notes       *string                    `json:"notes,omitempty"`
+	Frequency   *RecurringFrequency        `json:"frequency,omitempty"`
+	AnchorDate  *time.Time                 `json:"anchorDate,omitempty"`
+	IsActive    *bool                      `json:"isActive,omitempty"`
+}
+
+// Months 1-24, percent 1-100, days 1-365
+type UpdateSettingsInput struct {
+	Currency                        *Currency `json:"currency,omitempty"`
+	NegativeCashFlowThresholdMonths *int32    `json:"negativeCashFlowThresholdMonths,omitempty"`
+	NetWorthDeclineThresholdMonths  *int32    `json:"netWorthDeclineThresholdMonths,omitempty"`
+	RiskyAllocationThresholdPercent *int32    `json:"riskyAllocationThresholdPercent,omitempty"`
+	IdleCashThresholdAmount         *int      `json:"idleCashThresholdAmount,omitempty"`
+	IdleCashThresholdDays           *int32    `json:"idleCashThresholdDays,omitempty"`
+}
+
+// Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
+type UpdateTransactionInput struct {
+	AccountID   *string `json:"accountId,omitempty"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// null clears it. Changing type to transfer clears it too
+	CategoryID  graphql.Omittable[*string] `json:"categoryId,omitempty"`
+	Type        *TransactionType           `json:"type,omitempty"`
+	Amount      *int                       `json:"amount,omitempty"`
+	Description *string                    `json:"description,omitempty"`
+	Merchant    *string                    `json:"merchant,omitempty"`
+	Notes       *string                    `json:"notes,omitempty"`
+	Date        *time.Time                 `json:"date,omitempty"`
+	// Replaces the whole set; [] clears it
+	TagIds []string `json:"tagIds,omitempty"`
+	// Replaces the whole set; [] clears it. Setting categoryId alone drops splits and vice versa
+	Splits []*TransactionSplitInput `json:"splits,omitempty"`
 }
 
 type AccountType string
 
 const (
 	AccountTypeChecking   AccountType = "checking"
+	AccountTypeDebitCard  AccountType = "debit_card"
 	AccountTypeSavings    AccountType = "savings"
 	AccountTypeCreditCard AccountType = "credit_card"
 	AccountTypeCash       AccountType = "cash"
@@ -49,6 +465,7 @@ const (
 
 var AllAccountType = []AccountType{
 	AccountTypeChecking,
+	AccountTypeDebitCard,
 	AccountTypeSavings,
 	AccountTypeCreditCard,
 	AccountTypeCash,
@@ -58,7 +475,7 @@ var AllAccountType = []AccountType{
 
 func (e AccountType) IsValid() bool {
 	switch e {
-	case AccountTypeChecking, AccountTypeSavings, AccountTypeCreditCard, AccountTypeCash, AccountTypeInvestment, AccountTypeOther:
+	case AccountTypeChecking, AccountTypeDebitCard, AccountTypeSavings, AccountTypeCreditCard, AccountTypeCash, AccountTypeInvestment, AccountTypeOther:
 		return true
 	}
 	return false
@@ -94,6 +511,180 @@ func (e *AccountType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccountType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type AssetClass string
+
+const (
+	AssetClassInvestments    AssetClass = "investments"
+	AssetClassRealEstate     AssetClass = "real_estate"
+	AssetClassVehicles       AssetClass = "vehicles"
+	AssetClassPreciousMetals AssetClass = "precious_metals"
+	AssetClassOther          AssetClass = "other"
+)
+
+var AllAssetClass = []AssetClass{
+	AssetClassInvestments,
+	AssetClassRealEstate,
+	AssetClassVehicles,
+	AssetClassPreciousMetals,
+	AssetClassOther,
+}
+
+func (e AssetClass) IsValid() bool {
+	switch e {
+	case AssetClassInvestments, AssetClassRealEstate, AssetClassVehicles, AssetClassPreciousMetals, AssetClassOther:
+		return true
+	}
+	return false
+}
+
+func (e AssetClass) String() string {
+	return string(e)
+}
+
+func (e *AssetClass) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AssetClass(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AssetClass", str)
+	}
+	return nil
+}
+
+func (e AssetClass) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AssetClass) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AssetClass) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// How an asset behaves month to month, set by the user
+type CapitalRole string
+
+const (
+	CapitalRoleIncome  CapitalRole = "income"
+	CapitalRoleNeutral CapitalRole = "neutral"
+	CapitalRoleDrain   CapitalRole = "drain"
+)
+
+var AllCapitalRole = []CapitalRole{
+	CapitalRoleIncome,
+	CapitalRoleNeutral,
+	CapitalRoleDrain,
+}
+
+func (e CapitalRole) IsValid() bool {
+	switch e {
+	case CapitalRoleIncome, CapitalRoleNeutral, CapitalRoleDrain:
+		return true
+	}
+	return false
+}
+
+func (e CapitalRole) String() string {
+	return string(e)
+}
+
+func (e *CapitalRole) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CapitalRole(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CapitalRole", str)
+	}
+	return nil
+}
+
+func (e CapitalRole) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CapitalRole) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CapitalRole) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CategoryKind string
+
+const (
+	CategoryKindIncome  CategoryKind = "income"
+	CategoryKindExpense CategoryKind = "expense"
+)
+
+var AllCategoryKind = []CategoryKind{
+	CategoryKindIncome,
+	CategoryKindExpense,
+}
+
+func (e CategoryKind) IsValid() bool {
+	switch e {
+	case CategoryKindIncome, CategoryKindExpense:
+		return true
+	}
+	return false
+}
+
+func (e CategoryKind) String() string {
+	return string(e)
+}
+
+func (e *CategoryKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CategoryKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CategoryKind", str)
+	}
+	return nil
+}
+
+func (e CategoryKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CategoryKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CategoryKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -153,6 +744,296 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NetWorthRange string
+
+const (
+	NetWorthRangeLast30Days NetWorthRange = "last_30_days"
+	NetWorthRangeLast90Days NetWorthRange = "last_90_days"
+	NetWorthRangeLastYear   NetWorthRange = "last_year"
+	NetWorthRangeLast5Years NetWorthRange = "last_5_years"
+	NetWorthRangeAll        NetWorthRange = "all"
+)
+
+var AllNetWorthRange = []NetWorthRange{
+	NetWorthRangeLast30Days,
+	NetWorthRangeLast90Days,
+	NetWorthRangeLastYear,
+	NetWorthRangeLast5Years,
+	NetWorthRangeAll,
+}
+
+func (e NetWorthRange) IsValid() bool {
+	switch e {
+	case NetWorthRangeLast30Days, NetWorthRangeLast90Days, NetWorthRangeLastYear, NetWorthRangeLast5Years, NetWorthRangeAll:
+		return true
+	}
+	return false
+}
+
+func (e NetWorthRange) String() string {
+	return string(e)
+}
+
+func (e *NetWorthRange) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NetWorthRange(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NetWorthRange", str)
+	}
+	return nil
+}
+
+func (e NetWorthRange) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NetWorthRange) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NetWorthRange) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RecurringFrequency string
+
+const (
+	RecurringFrequencyWeekly  RecurringFrequency = "weekly"
+	RecurringFrequencyMonthly RecurringFrequency = "monthly"
+	RecurringFrequencyYearly  RecurringFrequency = "yearly"
+)
+
+var AllRecurringFrequency = []RecurringFrequency{
+	RecurringFrequencyWeekly,
+	RecurringFrequencyMonthly,
+	RecurringFrequencyYearly,
+}
+
+func (e RecurringFrequency) IsValid() bool {
+	switch e {
+	case RecurringFrequencyWeekly, RecurringFrequencyMonthly, RecurringFrequencyYearly:
+		return true
+	}
+	return false
+}
+
+func (e RecurringFrequency) String() string {
+	return string(e)
+}
+
+func (e *RecurringFrequency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RecurringFrequency(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RecurringFrequency", str)
+	}
+	return nil
+}
+
+func (e RecurringFrequency) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RecurringFrequency) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RecurringFrequency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Risk of losing value, set by the user
+type RiskLevel string
+
+const (
+	RiskLevelLow    RiskLevel = "low"
+	RiskLevelMedium RiskLevel = "medium"
+	RiskLevelHigh   RiskLevel = "high"
+)
+
+var AllRiskLevel = []RiskLevel{
+	RiskLevelLow,
+	RiskLevelMedium,
+	RiskLevelHigh,
+}
+
+func (e RiskLevel) IsValid() bool {
+	switch e {
+	case RiskLevelLow, RiskLevelMedium, RiskLevelHigh:
+		return true
+	}
+	return false
+}
+
+func (e RiskLevel) String() string {
+	return string(e)
+}
+
+func (e *RiskLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskLevel", str)
+	}
+	return nil
+}
+
+func (e RiskLevel) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TransactionSort string
+
+const (
+	TransactionSortDateDesc   TransactionSort = "date_desc"
+	TransactionSortAmountDesc TransactionSort = "amount_desc"
+	TransactionSortAmountAsc  TransactionSort = "amount_asc"
+)
+
+var AllTransactionSort = []TransactionSort{
+	TransactionSortDateDesc,
+	TransactionSortAmountDesc,
+	TransactionSortAmountAsc,
+}
+
+func (e TransactionSort) IsValid() bool {
+	switch e {
+	case TransactionSortDateDesc, TransactionSortAmountDesc, TransactionSortAmountAsc:
+		return true
+	}
+	return false
+}
+
+func (e TransactionSort) String() string {
+	return string(e)
+}
+
+func (e *TransactionSort) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TransactionSort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TransactionSort", str)
+	}
+	return nil
+}
+
+func (e TransactionSort) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TransactionSort) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TransactionSort) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TransactionType string
+
+const (
+	TransactionTypeIncome   TransactionType = "income"
+	TransactionTypeExpense  TransactionType = "expense"
+	TransactionTypeTransfer TransactionType = "transfer"
+)
+
+var AllTransactionType = []TransactionType{
+	TransactionTypeIncome,
+	TransactionTypeExpense,
+	TransactionTypeTransfer,
+}
+
+func (e TransactionType) IsValid() bool {
+	switch e {
+	case TransactionTypeIncome, TransactionTypeExpense, TransactionTypeTransfer:
+		return true
+	}
+	return false
+}
+
+func (e TransactionType) String() string {
+	return string(e)
+}
+
+func (e *TransactionType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TransactionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TransactionType", str)
+	}
+	return nil
+}
+
+func (e TransactionType) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TransactionType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TransactionType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

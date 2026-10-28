@@ -5,22 +5,14 @@ import (
 	"net/http"
 	"os"
 
-	financistdb "github.com/dimakohanskyi/financist/internal/db"
-	"github.com/dimakohanskyi/financist/internal/repository"
-	"github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/lru"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/dimakohanskyi/financist/internal/configs"
-	"github.com/dimakohanskyi/financist/internal/graph"
+	financistdb "github.com/dimakohanskyi/financist/internal/db"
+	"github.com/dimakohanskyi/financist/internal/server"
 	"github.com/joho/godotenv"
-	"github.com/vektah/gqlparser/v2/ast"
 )
 
+// Dev server: the API over HTTP plus a playground. The desktop app is main.go at the repo root.
 func main() {
 
 	if error := godotenv.Load(); error != nil {
@@ -37,17 +29,9 @@ func main() {
 		log.Fatal("failed to set up logger")
 	}
 
-	gormDB, err := gorm.Open(sqlite.Open("financist.db"), &gorm.Config{})
+	gormDB, err := financistdb.Open("financist.db")
 	if err != nil {
-		log.Fatal("application couldn't create or connect to db")
-	}
-	dbConnection, err := gormDB.DB()
-	if err != nil {
-		log.Fatal("DB is not created or accessible")
-	}
-
-	if error := financistdb.RunMigrations(dbConnection); error != nil {
-		log.Fatal("application couldn't run migrations")
+		log.Fatalf("application couldn't open or migrate db: %v", err)
 	}
 
 	gqlPort := os.Getenv("GQL_API_PORT")
@@ -55,31 +39,9 @@ func main() {
 		gqlPort = "8080"
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{AccountRepo: repository.NewAccountRepo(gormDB)}}))
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-
-	// SetQueryCache caches parsed GraphQL queries to avoid re-parsing
-	// When a client sends a GraphQL query string, it must be parsed into an AST (Abstract Syntax Tree)
-	// to understand which fields to resolve. This parsing is expensive.
-	// LRU cache stores up to 1000 parsed queries in memory. When the same query is sent again,
-	// we use the cached AST instead of re-parsing, which can be 10x-100x faster.
-	// LRU = Least Recently Used: when cache is full, oldest unused query is removed.
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
-
-	// Introspection allows clients to query the schema structure (used by tools like GraphQL Playground)
-	srv.Use(extension.Introspection{})
-
-	// AutomaticPersistedQuery (APQ) allows clients to send only a hash of the query instead of the full query string
-	// Reduces network bandwidth. Cache stores 100 APQ hashes in memory.
-	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
-	})
-
-	http.Handle("/", playground.ApolloSandboxHandler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	mux := server.New(gormDB)
+	mux.Handle("/", playground.ApolloSandboxHandler("GraphQL playground", "/query"))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", gqlPort)
-	log.Fatal(http.ListenAndServe(":"+gqlPort, nil))
+	log.Fatal(http.ListenAndServe(":"+gqlPort, mux))
 }

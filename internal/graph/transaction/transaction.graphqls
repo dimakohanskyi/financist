@@ -1,0 +1,118 @@
+enum TransactionType {
+  income
+  expense
+  transfer
+}
+
+type Transaction {
+  id: ID!
+  accountId: ID!
+  toAccountId: ID
+  "Kind matches type; transfers and split transactions have none"
+  categoryId: ID
+  type: TransactionType!
+  "Minor units (cents), always positive"
+  amount: Int64!
+  description: String!
+  merchant: String!
+  notes: String!
+  date: Time!
+  tags: [Tag!]!
+  "Empty unless the amount is divided across categories"
+  splits: [TransactionSplit!]!
+}
+
+"One category's share of a split transaction"
+type TransactionSplit {
+  id: ID!
+  "null once its category is deleted"
+  categoryId: ID
+  amount: Int64!
+  note: String!
+}
+
+"Splits divide the amount across one parent category and its subcategories. Need 2+ parts that add up to the amount"
+input TransactionSplitInput {
+  categoryId: ID!
+  amount: Int64!
+  note: String = ""
+}
+
+input CreateTransactionInput {
+  accountId: ID!
+  "Only for transfers"
+  toAccountId: ID
+  categoryId: ID
+  type: TransactionType!
+  amount: Int64!
+  "First letter is capitalized"
+  description: String = ""
+  merchant: String = ""
+  notes: String = ""
+  date: Time!
+  tagIds: [ID!] = []
+  "Instead of categoryId"
+  splits: [TransactionSplitInput!] = []
+}
+
+"Omitted fields are left unchanged. Changing type away from transfer clears toAccountId"
+input UpdateTransactionInput {
+  accountId: ID
+  toAccountId: ID
+  "null clears it. Changing type to transfer clears it too"
+  categoryId: ID @goField(omittable: true)
+  type: TransactionType
+  amount: Int64
+  description: String
+  merchant: String
+  notes: String
+  date: Time
+  "Replaces the whole set; [] clears it"
+  tagIds: [ID!]
+  "Replaces the whole set; [] clears it. Setting categoryId alone drops splits and vice versa"
+  splits: [TransactionSplitInput!]
+}
+
+extend type Mutation {
+  createTransaction(input: CreateTransactionInput!): Transaction!
+  updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction!
+  "Permanently removes the transaction"
+  deleteTransaction(id: ID!): Boolean!
+  "For CSV imports: all are validated first, then all or none are saved. Returns how many were created"
+  bulkCreateTransactions(inputs: [CreateTransactionInput!]!): Int!
+}
+
+enum TransactionSort {
+  date_desc
+  amount_desc
+  amount_asc
+}
+
+type TransactionPage {
+  items: [Transaction!]!
+  "Number of matches across all pages"
+  total: Int!
+}
+
+extend type Query {
+  transaction(id: ID!): Transaction
+  """
+  Transfers show up for both accounts. categoryId also matches split lines.
+  search looks in description, merchant and notes. from/to are inclusive.
+  limit defaults to 50, max 200
+  """
+  transactions(
+    accountId: ID
+    categoryId: ID
+    tagId: ID
+    type: TransactionType
+    search: String
+    from: Time
+    to: Time
+    sort: TransactionSort = date_desc
+    limit: Int = 50
+    offset: Int = 0
+  ): TransactionPage!
+  "From the first transaction's year through the current one, gaps included"
+  transactionYears: [Int!]!
+}
