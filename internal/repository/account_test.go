@@ -3,20 +3,30 @@ package repository
 import (
 	"context"
 	"testing"
+	"time"
 
+	financistdb "github.com/dimakohanskyi/financist/internal/db"
 	"github.com/dimakohanskyi/financist/internal/model"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
+// newTestDB returns a fresh in-memory database with all migrations applied.
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := financistdb.Open("file:" + t.Name() + "?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&accountRow{}, &transactionRow{}); err != nil {
-		t.Fatal(err)
+	return db
+}
+
+// withAccounts creates accounts 1 and 2 for tests that need foreign keys to hold.
+func withAccounts(t *testing.T, db *gorm.DB) *gorm.DB {
+	t.Helper()
+	for _, name := range []string{"Main", "Savings"} {
+		if err := NewAccountRepo(db).Create(context.Background(), &model.Account{Name: name, AccountType: "checking", Currency: "USD"}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return db
 }
@@ -89,5 +99,26 @@ func TestArchive(t *testing.T) {
 	got, err := r.List(ctx, false)
 	if err != nil || len(got) != 0 {
 		t.Fatalf("got %+v, err %v", got, err)
+	}
+}
+
+func TestBalance(t *testing.T) {
+	db := withAccounts(t, newTestDB(t))
+	ctx := context.Background()
+	to := int64(2)
+	for _, tx := range []*model.Transaction{
+		{AccountID: 1, Type: model.TransactionIncome, Amount: 1000, Date: time.Now()},
+		{AccountID: 1, Type: model.TransactionExpense, Amount: 300, Date: time.Now()},
+		{AccountID: 1, ToAccountID: &to, Type: model.TransactionTransfer, Amount: 200, Date: time.Now()},
+	} {
+		if err := NewTransactionRepo(db).Create(ctx, tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := NewAccountRepo(db)
+	main, err1 := r.Balance(ctx, 1)
+	savings, err2 := r.Balance(ctx, 2)
+	if err1 != nil || err2 != nil || main != 500 || savings != 200 {
+		t.Fatalf("got %d and %d, errs %v %v", main, savings, err1, err2)
 	}
 }

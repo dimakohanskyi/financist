@@ -30,6 +30,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	Account() AccountResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 }
@@ -40,6 +41,8 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Account struct {
 		AccountType func(childComplexity int) int
+		Balance     func(childComplexity int) int
+		Color       func(childComplexity int) int
 		Currency    func(childComplexity int) int
 		ID          func(childComplexity int) int
 		IsArchived  func(childComplexity int) int
@@ -83,6 +86,9 @@ type ComplexityRoot struct {
 
 // region    ************************** generated!.gotpl **************************
 
+type AccountResolver interface {
+	Balance(ctx context.Context, obj *model.Account) (int, error)
+}
 type MutationResolver interface {
 	CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error)
 	UpdateAccount(ctx context.Context, id string, input model.UpdateAccountInput) (*model.Account, error)
@@ -123,6 +129,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.AccountType(childComplexity), true
+	case "Account.balance":
+		if e.ComplexityRoot.Account.Balance == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.Balance(childComplexity), true
+	case "Account.color":
+		if e.ComplexityRoot.Account.Color == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.Color(childComplexity), true
 	case "Account.currency":
 		if e.ComplexityRoot.Account.Currency == nil {
 			break
@@ -441,8 +459,12 @@ func (ec *executionContext) childFields_Account(ctx context.Context, field graph
 		return ec.fieldContext_Account_accountType(ctx, field)
 	case "currency":
 		return ec.fieldContext_Account_currency(ctx, field)
+	case "color":
+		return ec.fieldContext_Account_color(ctx, field)
 	case "isArchived":
 		return ec.fieldContext_Account_isArchived(ctx, field)
+	case "balance":
+		return ec.fieldContext_Account_balance(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 }
@@ -931,6 +953,29 @@ func (ec *executionContext) fieldContext_Account_currency(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Account", field, false, false, errors.New("field of type Currency does not have child fields"))
 }
 
+func (ec *executionContext) _Account_color(ctx context.Context, field graphql.CollectedField, obj *model.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Account_color(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Color, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Account_color(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Account", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Account_isArchived(ctx context.Context, field graphql.CollectedField, obj *model.Account) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -952,6 +997,29 @@ func (ec *executionContext) _Account_isArchived(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Account_isArchived(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Account", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Account_balance(ctx context.Context, field graphql.CollectedField, obj *model.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Account_balance(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Account().Balance(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Account_balance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Account", field, true, true, errors.New("field of type Int64 does not have child fields"))
 }
 
 func (ec *executionContext) _Mutation_createAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2779,7 +2847,7 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "accountType", "currency"}
+	fieldsInOrder := [...]string{"name", "accountType", "currency", "color"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -2807,6 +2875,13 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 				return it, err
 			}
 			it.Currency = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
 		}
 	}
 	return it, nil
@@ -2892,7 +2967,7 @@ func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "accountType", "currency", "isArchived"}
+	fieldsInOrder := [...]string{"name", "accountType", "currency", "color", "isArchived"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -2920,6 +2995,13 @@ func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context
 				return it, err
 			}
 			it.Currency = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
 		case "isArchived":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isArchived"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -3020,28 +3102,71 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._Account_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Account_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "accountType":
 			out.Values[i] = ec._Account_accountType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "currency":
 			out.Values[i] = ec._Account_currency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "color":
+			out.Values[i] = ec._Account_color(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "isArchived":
 			out.Values[i] = ec._Account_isArchived(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "balance":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Account_balance(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

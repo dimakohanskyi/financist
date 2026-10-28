@@ -5,6 +5,7 @@ type Account struct {
 	Name        string
 	AccountType string
 	Currency    string
+	Color       *string // hex like #2a78d6
 	IsArchived  bool
 }
 
@@ -13,5 +14,6 @@ type AccountUpdate struct {
 	Name        *string
 	AccountType *string
 	Currency    *string
+	Color       *string // "" clears it
 	IsArchived  *bool
 }

@@ -8,8 +8,6 @@ import (
 	financistdb "github.com/dimakohanskyi/financist/internal/db"
 	"github.com/dimakohanskyi/financist/internal/repository"
 	"github.com/dimakohanskyi/financist/internal/service"
-	"github.com/glebarez/sqlite"
-	"gorm.io/gorm"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -38,17 +36,9 @@ func main() {
 		log.Fatal("failed to set up logger")
 	}
 
-	gormDB, err := gorm.Open(sqlite.Open("financist.db?_pragma=foreign_keys(1)"), &gorm.Config{})
+	gormDB, err := financistdb.Open("financist.db")
 	if err != nil {
-		log.Fatal("application couldn't create or connect to db")
-	}
-	dbConnection, err := gormDB.DB()
-	if err != nil {
-		log.Fatal("DB is not created or accessible")
-	}
-
-	if error := financistdb.RunMigrations(dbConnection); error != nil {
-		log.Fatal("application couldn't run migrations")
+		log.Fatalf("application couldn't open or migrate db: %v", err)
 	}
 
 	gqlPort := os.Getenv("GQL_API_PORT")

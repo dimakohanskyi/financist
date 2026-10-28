@@ -15,13 +15,18 @@ type Account struct {
 	Name        string      `json:"name"`
 	AccountType AccountType `json:"accountType"`
 	Currency    Currency    `json:"currency"`
-	IsArchived  bool        `json:"isArchived"`
+	// Hex like #2a78d6
+	Color      *string `json:"color,omitempty"`
+	IsArchived bool    `json:"isArchived"`
+	// Minor units. Income adds, expense subtracts, transfers move money between accounts
+	Balance int `json:"balance"`
 }
 
 type CreateAccountInput struct {
 	Name        string      `json:"name"`
 	AccountType AccountType `json:"accountType"`
 	Currency    Currency    `json:"currency"`
+	Color       *string     `json:"color,omitempty"`
 }
 
 type CreateTransactionInput struct {
@@ -61,7 +66,9 @@ type UpdateAccountInput struct {
 	Name        *string      `json:"name,omitempty"`
 	AccountType *AccountType `json:"accountType,omitempty"`
 	Currency    *Currency    `json:"currency,omitempty"`
-	IsArchived  *bool        `json:"isArchived,omitempty"`
+	// Empty string clears it
+	Color      *string `json:"color,omitempty"`
+	IsArchived *bool   `json:"isArchived,omitempty"`
 }
 
 // Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
@@ -78,6 +85,7 @@ type AccountType string
 
 const (
 	AccountTypeChecking   AccountType = "checking"
+	AccountTypeDebitCard  AccountType = "debit_card"
 	AccountTypeSavings    AccountType = "savings"
 	AccountTypeCreditCard AccountType = "credit_card"
 	AccountTypeCash       AccountType = "cash"
@@ -87,6 +95,7 @@ const (
 
 var AllAccountType = []AccountType{
 	AccountTypeChecking,
+	AccountTypeDebitCard,
 	AccountTypeSavings,
 	AccountTypeCreditCard,
 	AccountTypeCash,
@@ -96,7 +105,7 @@ var AllAccountType = []AccountType{
 
 func (e AccountType) IsValid() bool {
 	switch e {
-	case AccountTypeChecking, AccountTypeSavings, AccountTypeCreditCard, AccountTypeCash, AccountTypeInvestment, AccountTypeOther:
+	case AccountTypeChecking, AccountTypeDebitCard, AccountTypeSavings, AccountTypeCreditCard, AccountTypeCash, AccountTypeInvestment, AccountTypeOther:
 		return true
 	}
 	return false

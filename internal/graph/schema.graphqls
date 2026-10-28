@@ -1,5 +1,9 @@
 scalar Int64
 scalar Time
+scalar Map
+
+directive @goField(forceResolver: Boolean, name: String, omittable: Boolean) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
 type Query {
   ping: String!
 }

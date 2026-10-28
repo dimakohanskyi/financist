@@ -1,3 +1,4 @@
 docs/
-financist.dbtemp/
+financist.db
+temp/
 .env

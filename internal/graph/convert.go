@@ -13,6 +13,7 @@ func toAccount(a *domain.Account) *model.Account {
 		Name:        a.Name,
 		AccountType: model.AccountType(a.AccountType),
 		Currency:    model.Currency(a.Currency),
+		Color:       a.Color,
 		IsArchived:  a.IsArchived,
 	}
 }

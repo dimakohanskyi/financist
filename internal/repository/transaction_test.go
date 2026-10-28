@@ -10,7 +10,7 @@ import (
 )
 
 func TestTransactionCreate(t *testing.T) {
-	db := newTestDB(t)
+	db := withAccounts(t, newTestDB(t))
 	tx := &model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 500, Date: time.Now()}
 	if err := NewTransactionRepo(db).Create(context.Background(), tx); err != nil {
 		t.Fatal(err)
@@ -21,7 +21,7 @@ func TestTransactionCreate(t *testing.T) {
 }
 
 func TestTransactionGetByID(t *testing.T) {
-	r := NewTransactionRepo(newTestDB(t))
+	r := NewTransactionRepo(withAccounts(t, newTestDB(t)))
 	ctx := context.Background()
 	tx := &model.Transaction{AccountID: 1, Type: model.TransactionIncome, Amount: 700, Date: time.Now()}
 	if err := r.Create(ctx, tx); err != nil {
@@ -34,7 +34,7 @@ func TestTransactionGetByID(t *testing.T) {
 }
 
 func TestTransactionList(t *testing.T) {
-	r := NewTransactionRepo(newTestDB(t))
+	r := NewTransactionRepo(withAccounts(t, newTestDB(t)))
 	ctx := context.Background()
 	for _, acc := range []int64{1, 1, 2} {
 		tx := &model.Transaction{AccountID: acc, Type: model.TransactionExpense, Amount: 100, Date: time.Now()}
@@ -50,7 +50,7 @@ func TestTransactionList(t *testing.T) {
 }
 
 func TestTransactionUpdate(t *testing.T) {
-	r := NewTransactionRepo(newTestDB(t))
+	r := NewTransactionRepo(withAccounts(t, newTestDB(t)))
 	ctx := context.Background()
 	to := int64(2)
 	tx := &model.Transaction{AccountID: 1, ToAccountID: &to, Type: model.TransactionTransfer, Amount: 100, Date: time.Now()}
@@ -68,7 +68,7 @@ func TestTransactionUpdate(t *testing.T) {
 }
 
 func TestTransactionDelete(t *testing.T) {
-	r := NewTransactionRepo(newTestDB(t))
+	r := NewTransactionRepo(withAccounts(t, newTestDB(t)))
 	ctx := context.Background()
 	tx := &model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 100, Date: time.Now()}
 	if err := r.Create(ctx, tx); err != nil {
