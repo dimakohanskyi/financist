@@ -13,7 +13,12 @@ import (
 // newTestDB returns a fresh in-memory database with all migrations applied.
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := financistdb.Open("file:" + t.Name() + "?mode=memory&cache=shared")
+	return openTestDB(t, t.Name())
+}
+
+func openTestDB(t *testing.T, name string) *gorm.DB {
+	t.Helper()
+	db, err := financistdb.Open("file:" + name + "?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)
 	}

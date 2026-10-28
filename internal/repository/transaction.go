@@ -22,8 +22,8 @@ type transactionRow struct {
 	Merchant    string
 	Notes       string
 	Date        time.Time
-	Tags        []tagRow   `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID"`
-	Splits      []splitRow `gorm:"foreignKey:TransactionID"`
+	Tags        []tagRow   `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID" json:"-"`
+	Splits      []splitRow `gorm:"foreignKey:TransactionID" json:"-"`
 }
 
 func (transactionRow) TableName() string { return "transactions" }

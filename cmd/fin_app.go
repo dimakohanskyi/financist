@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -89,6 +90,33 @@ func main() {
 
 	http.Handle("/", playground.ApolloSandboxHandler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
+
+	// Backups are plain HTTP: a file to download and upload, not a query.
+	backups := repository.NewBackupRepo(gormDB)
+	http.HandleFunc("GET /backup", func(w http.ResponseWriter, r *http.Request) {
+		b, err := backups.Export(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", `attachment; filename="financist-backup.json"`)
+		json.NewEncoder(w).Encode(b)
+	})
+	// Replaces all data with the uploaded backup, all or nothing.
+	http.HandleFunc("POST /backup", func(w http.ResponseWriter, r *http.Request) {
+		var b repository.Backup
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 100<<20)).Decode(&b); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		log.Printf("restoring backup exported at %s: %d accounts, %d transactions", b.ExportedAt, len(b.Accounts), len(b.Transactions))
+		if err := backups.Import(r.Context(), &b); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", gqlPort)
 	log.Fatal(http.ListenAndServe(":"+gqlPort, nil))

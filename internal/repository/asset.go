@@ -20,8 +20,8 @@ type assetRow struct {
 	CapitalRole     string
 	MonthlyCashFlow *int64
 	RiskLevel       string
-	CurrentValue    int64      `gorm:"->"` // filled by withLatest
-	AsOfDate        *time.Time `gorm:"->"`
+	CurrentValue    int64      `gorm:"->" json:"-"` // filled by withLatest
+	AsOfDate        *time.Time `gorm:"->" json:"-"`
 }
 
 func (assetRow) TableName() string { return "assets" }

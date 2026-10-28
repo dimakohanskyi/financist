@@ -15,7 +15,7 @@ type goalRow struct {
 	Name          string
 	TargetAmount  int64
 	TargetDate    *time.Time
-	CurrentAmount int64 `gorm:"->"` // computed by withCurrent
+	CurrentAmount int64 `gorm:"->" json:"-"` // computed by withCurrent
 }
 
 func (goalRow) TableName() string { return "goals" }
