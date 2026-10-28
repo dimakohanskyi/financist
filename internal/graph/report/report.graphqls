@@ -1,0 +1,139 @@
+"A top-level category's total, its subcategories and split lines rolled in"
+type CategoryAmount {
+  "null for the slice holding everything past the top few"
+  categoryId: ID
+  category: Category @goField(forceResolver: true)
+  amount: Int64!
+  percent: Float!
+  transactionCount: Int!
+  "Where the amount came from, set only when more than one category fed it"
+  children: [CategoryAmount!]!
+}
+
+"One month at a glance. Transfers between your accounts aren't income or spending"
+type Dashboard {
+  year: Int!
+  month: Int!
+  income: Int64!
+  spent: Int64!
+  net: Int64!
+  transferredOut: Int64!
+  "Top 8 by amount, the rest folded into one slice"
+  spendingByCategory: [CategoryAmount!]!
+}
+
+type CashFlowMonth {
+  year: Int!
+  month: Int!
+  income: Int64!
+  expense: Int64!
+  net: Int64!
+}
+
+type CashFlow {
+  "The data's own span when not given"
+  from: Time
+  to: Time
+  "Every month in the span, empty ones included"
+  months: [CashFlowMonth!]!
+  totalIncome: Int64!
+  totalExpense: Int64!
+  totalNet: Int64!
+}
+
+type MonthAmount {
+  year: Int!
+  month: Int!
+  amount: Int64!
+}
+
+type CategorySpending {
+  categoryId: ID!
+  category: Category! @goField(forceResolver: true)
+  from: Time
+  to: Time
+  total: Int64!
+  transactionCount: Int!
+  averagePerMonth: Int64!
+  months: [MonthAmount!]!
+}
+
+type CategoryRanking {
+  from: Time
+  to: Time
+  total: Int64!
+  items: [CategoryAmount!]!
+}
+
+enum NetWorthRange {
+  last_30_days
+  last_90_days
+  last_year
+  last_5_years
+  all
+}
+
+type DatedAmount {
+  date: Time!
+  amount: Int64!
+}
+
+type NetWorthPart {
+  "cash, an asset class, or asset:<id>"
+  key: String!
+  name: String!
+  amount: Int64!
+  percent: Float!
+}
+
+type CapitalRoleSummary {
+  role: CapitalRole!
+  totalValue: Int64!
+  monthlyCashFlow: Int64!
+  count: Int!
+}
+
+type RiskLevelSummary {
+  riskLevel: RiskLevel!
+  totalValue: Int64!
+  "Share of all capital"
+  percent: Float!
+  "Cash and assets in this tier; percent is their share of the tier"
+  items: [NetWorthPart!]!
+}
+
+"Cash from cash-like account balances plus each asset's latest value"
+type NetWorth {
+  current: Int64!
+  changeAmount: Int64!
+  "null when the range starts at zero"
+  changePercent: Float
+  "One point per day"
+  series: [DatedAmount!]!
+  "Cash first, then each asset class"
+  breakdown: [NetWorthPart!]!
+  capitalRoles: [CapitalRoleSummary!]!
+  riskLevels: [RiskLevelSummary!]!
+}
+
+"An alert or a piece of advice; word it on the client from key and params"
+type Notice {
+  key: String!
+  "severity for alerts, tone (positive, neutral, warning) for advice"
+  level: String!
+  params: Map!
+}
+
+extend type Query {
+  "Defaults to the current month"
+  dashboard(year: Int, month: Int): Dashboard!
+  cashFlow(from: Time, to: Time): CashFlow!
+  "A top-level category includes its subcategories"
+  categorySpending(categoryId: ID!, from: Time, to: Time): CategorySpending!
+  categoryRanking(kind: CategoryKind! = expense, from: Time, to: Time): CategoryRanking!
+  netWorth(range: NetWorthRange! = last_30_days): NetWorth!
+  "negative_cash_flow_streak, net_worth_decline_streak, risky_allocation_exceeded, budget_exceeded, idle_cash"
+  alerts: [Notice!]!
+  "rising_category, unbudgeted_top_category, savings_rate_trend"
+  advice: [Notice!]!
+}

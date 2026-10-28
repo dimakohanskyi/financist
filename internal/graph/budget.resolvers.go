@@ -81,7 +81,7 @@ func (r *queryResolver) BudgetStatus(ctx context.Context, year *int32, month *in
 			Budget:       toBudget(&st.Budget),
 			Spent:        int(st.Spent),
 			Remaining:    int(st.MonthlyLimit - st.Spent),
-			Percent:      percent(st.Spent, st.MonthlyLimit),
+			Percent:      domain.Percent(st.Spent, st.MonthlyLimit),
 			IsOverBudget: st.Spent > st.MonthlyLimit,
 		}
 	}

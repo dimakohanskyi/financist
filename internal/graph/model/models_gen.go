@@ -66,6 +66,32 @@ type BudgetStatus struct {
 	IsOverBudget bool    `json:"isOverBudget"`
 }
 
+type CapitalRoleSummary struct {
+	Role            CapitalRole `json:"role"`
+	TotalValue      int         `json:"totalValue"`
+	MonthlyCashFlow int         `json:"monthlyCashFlow"`
+	Count           int32       `json:"count"`
+}
+
+type CashFlow struct {
+	// The data's own span when not given
+	From *time.Time `json:"from,omitempty"`
+	To   *time.Time `json:"to,omitempty"`
+	// Every month in the span, empty ones included
+	Months       []*CashFlowMonth `json:"months"`
+	TotalIncome  int              `json:"totalIncome"`
+	TotalExpense int              `json:"totalExpense"`
+	TotalNet     int              `json:"totalNet"`
+}
+
+type CashFlowMonth struct {
+	Year    int32 `json:"year"`
+	Month   int32 `json:"month"`
+	Income  int   `json:"income"`
+	Expense int   `json:"expense"`
+	Net     int   `json:"net"`
+}
+
 type Category struct {
 	ID   string       `json:"id"`
 	Name string       `json:"name"`
@@ -79,6 +105,36 @@ type Category struct {
 	IsDefault bool `json:"isDefault"`
 	// Subcategories are one level deep
 	ParentID *string `json:"parentId,omitempty"`
+}
+
+// A top-level category's total, its subcategories and split lines rolled in
+type CategoryAmount struct {
+	// null for the slice holding everything past the top few
+	CategoryID       *string   `json:"categoryId,omitempty"`
+	Category         *Category `json:"category,omitempty"`
+	Amount           int       `json:"amount"`
+	Percent          float64   `json:"percent"`
+	TransactionCount int32     `json:"transactionCount"`
+	// Where the amount came from, set only when more than one category fed it
+	Children []*CategoryAmount `json:"children"`
+}
+
+type CategoryRanking struct {
+	From  *time.Time        `json:"from,omitempty"`
+	To    *time.Time        `json:"to,omitempty"`
+	Total int               `json:"total"`
+	Items []*CategoryAmount `json:"items"`
+}
+
+type CategorySpending struct {
+	CategoryID       string         `json:"categoryId"`
+	Category         *Category      `json:"category"`
+	From             *time.Time     `json:"from,omitempty"`
+	To               *time.Time     `json:"to,omitempty"`
+	Total            int            `json:"total"`
+	TransactionCount int32          `json:"transactionCount"`
+	AveragePerMonth  int            `json:"averagePerMonth"`
+	Months           []*MonthAmount `json:"months"`
 }
 
 type CreateAccountInput struct {
@@ -148,6 +204,23 @@ type CreateTransactionInput struct {
 	Splits []*TransactionSplitInput `json:"splits,omitempty"`
 }
 
+// One month at a glance. Transfers between your accounts aren't income or spending
+type Dashboard struct {
+	Year           int32 `json:"year"`
+	Month          int32 `json:"month"`
+	Income         int   `json:"income"`
+	Spent          int   `json:"spent"`
+	Net            int   `json:"net"`
+	TransferredOut int   `json:"transferredOut"`
+	// Top 8 by amount, the rest folded into one slice
+	SpendingByCategory []*CategoryAmount `json:"spendingByCategory"`
+}
+
+type DatedAmount struct {
+	Date   time.Time `json:"date"`
+	Amount int       `json:"amount"`
+}
+
 // A savings goal tracked by a log of contributions
 type Goal struct {
 	ID           string     `json:"id"`
@@ -161,7 +234,43 @@ type Goal struct {
 	IsReached     bool    `json:"isReached"`
 }
 
+type MonthAmount struct {
+	Year   int32 `json:"year"`
+	Month  int32 `json:"month"`
+	Amount int   `json:"amount"`
+}
+
 type Mutation struct {
+}
+
+// Cash from cash-like account balances plus each asset's latest value
+type NetWorth struct {
+	Current      int `json:"current"`
+	ChangeAmount int `json:"changeAmount"`
+	// null when the range starts at zero
+	ChangePercent *float64 `json:"changePercent,omitempty"`
+	// One point per day
+	Series []*DatedAmount `json:"series"`
+	// Cash first, then each asset class
+	Breakdown    []*NetWorthPart       `json:"breakdown"`
+	CapitalRoles []*CapitalRoleSummary `json:"capitalRoles"`
+	RiskLevels   []*RiskLevelSummary   `json:"riskLevels"`
+}
+
+type NetWorthPart struct {
+	// cash, an asset class, or asset:<id>
+	Key     string  `json:"key"`
+	Name    string  `json:"name"`
+	Amount  int     `json:"amount"`
+	Percent float64 `json:"percent"`
+}
+
+// An alert or a piece of advice; word it on the client from key and params
+type Notice struct {
+	Key string `json:"key"`
+	// severity for alerts, tone (positive, neutral, warning) for advice
+	Level  string         `json:"level"`
+	Params map[string]any `json:"params"`
 }
 
 type Query struct {
@@ -189,6 +298,15 @@ type RecurringTransaction struct {
 	IsDue       bool      `json:"isDue"`
 	// Negative when overdue
 	DaysUntilDue int32 `json:"daysUntilDue"`
+}
+
+type RiskLevelSummary struct {
+	RiskLevel  RiskLevel `json:"riskLevel"`
+	TotalValue int       `json:"totalValue"`
+	// Share of all capital
+	Percent float64 `json:"percent"`
+	// Cash and assets in this tier; percent is their share of the tier
+	Items []*NetWorthPart `json:"items"`
 }
 
 // App-wide settings. Thresholds drive the alerts query
@@ -626,6 +744,67 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NetWorthRange string
+
+const (
+	NetWorthRangeLast30Days NetWorthRange = "last_30_days"
+	NetWorthRangeLast90Days NetWorthRange = "last_90_days"
+	NetWorthRangeLastYear   NetWorthRange = "last_year"
+	NetWorthRangeLast5Years NetWorthRange = "last_5_years"
+	NetWorthRangeAll        NetWorthRange = "all"
+)
+
+var AllNetWorthRange = []NetWorthRange{
+	NetWorthRangeLast30Days,
+	NetWorthRangeLast90Days,
+	NetWorthRangeLastYear,
+	NetWorthRangeLast5Years,
+	NetWorthRangeAll,
+}
+
+func (e NetWorthRange) IsValid() bool {
+	switch e {
+	case NetWorthRangeLast30Days, NetWorthRangeLast90Days, NetWorthRangeLastYear, NetWorthRangeLast5Years, NetWorthRangeAll:
+		return true
+	}
+	return false
+}
+
+func (e NetWorthRange) String() string {
+	return string(e)
+}
+
+func (e *NetWorthRange) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NetWorthRange(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NetWorthRange", str)
+	}
+	return nil
+}
+
+func (e NetWorthRange) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NetWorthRange) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NetWorthRange) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

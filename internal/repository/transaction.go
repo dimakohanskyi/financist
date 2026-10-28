@@ -247,6 +247,17 @@ func (r *TransactionRepo) Contributions(ctx context.Context, f model.Contributio
 	return append(plain, split...), err
 }
 
+// Ledger returns every transaction without tags or splits, oldest first.
+func (r *TransactionRepo) Ledger(ctx context.Context) ([]model.Transaction, error) {
+	var rows []transactionRow
+	err := r.db.WithContext(ctx).Order("date, id").Find(&rows).Error
+	out := make([]model.Transaction, len(rows))
+	for i, row := range rows {
+		out[i] = row.toModel()
+	}
+	return out, err
+}
+
 func withLinks(q *gorm.DB) *gorm.DB {
 	return q.Preload("Tags").Preload("Splits", func(db *gorm.DB) *gorm.DB { return db.Order("id") })
 }

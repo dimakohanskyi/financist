@@ -181,14 +181,6 @@ func toBudget(b *domain.Budget) *model.Budget {
 	}
 }
 
-// percent is part of whole, 0 when whole is 0.
-func percent(part, whole int64) float64 {
-	if whole == 0 {
-		return 0
-	}
-	return float64(part) / float64(whole) * 100
-}
-
 // yearMonth fills in the current month for missing arguments.
 func yearMonth(year, month *int32) (int, int) {
 	now := time.Now().UTC()
@@ -210,7 +202,7 @@ func toGoal(g *domain.Goal) *model.Goal {
 		TargetDate:    g.TargetDate,
 		CurrentAmount: int(g.CurrentAmount),
 		Remaining:     int(g.TargetAmount - g.CurrentAmount),
-		Percent:       percent(g.CurrentAmount, g.TargetAmount),
+		Percent:       domain.Percent(g.CurrentAmount, g.TargetAmount),
 		IsReached:     g.CurrentAmount >= g.TargetAmount,
 	}
 }
@@ -251,4 +243,64 @@ func intPtr(v *int32) *int {
 	}
 	n := int(*v)
 	return &n
+}
+
+func toCategoryAmounts(items []domain.CategoryAmount) []*model.CategoryAmount {
+	out := make([]*model.CategoryAmount, len(items))
+	for i, it := range items {
+		out[i] = &model.CategoryAmount{
+			CategoryID:       formatOptionalID(it.CategoryID),
+			Amount:           int(it.Amount),
+			Percent:          it.Percent,
+			TransactionCount: int32(it.TransactionCount),
+			Children:         toCategoryAmounts(it.Children),
+		}
+	}
+	return out
+}
+
+func toNetWorthParts(parts []domain.NetWorthPart) []*model.NetWorthPart {
+	out := make([]*model.NetWorthPart, len(parts))
+	for i, p := range parts {
+		out[i] = &model.NetWorthPart{Key: p.Key, Name: p.Name, Amount: int(p.Amount), Percent: p.Percent}
+	}
+	return out
+}
+
+func toNetWorth(nw *domain.NetWorth) *model.NetWorth {
+	out := &model.NetWorth{
+		Current:       int(nw.Current),
+		ChangeAmount:  int(nw.ChangeAmount),
+		ChangePercent: nw.ChangePercent,
+		Series:        make([]*model.DatedAmount, len(nw.Series)),
+		Breakdown:     toNetWorthParts(nw.Breakdown),
+	}
+	for i, p := range nw.Series {
+		out.Series[i] = &model.DatedAmount{Date: p.Date, Amount: int(p.Amount)}
+	}
+	for _, r := range nw.CapitalRoles {
+		out.CapitalRoles = append(out.CapitalRoles, &model.CapitalRoleSummary{
+			Role:            model.CapitalRole(r.Role),
+			TotalValue:      int(r.TotalValue),
+			MonthlyCashFlow: int(r.MonthlyCashFlow),
+			Count:           int32(r.Count),
+		})
+	}
+	for _, l := range nw.RiskLevels {
+		out.RiskLevels = append(out.RiskLevels, &model.RiskLevelSummary{
+			RiskLevel:  model.RiskLevel(l.Level),
+			TotalValue: int(l.TotalValue),
+			Percent:    l.Percent,
+			Items:      toNetWorthParts(l.Items),
+		})
+	}
+	return out
+}
+
+func toNotices(ns []domain.Notice) []*model.Notice {
+	out := make([]*model.Notice, len(ns))
+	for i, n := range ns {
+		out[i] = &model.Notice{Key: n.Key, Level: n.Level, Params: n.Params}
+	}
+	return out
 }
