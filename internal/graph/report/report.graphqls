@@ -125,8 +125,8 @@ type Notice {
 }
 
 extend type Query {
-  "Defaults to the current month"
-  dashboard(year: Int, month: Int): Dashboard!
+  "Defaults to the current month and every account"
+  dashboard(year: Int, month: Int, accountId: ID): Dashboard!
   cashFlow(from: Time, to: Time): CashFlow!
   "A top-level category includes its subcategories"
   categorySpending(categoryId: ID!, from: Time, to: Time): CategorySpending!

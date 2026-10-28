@@ -43,9 +43,14 @@ func TestReports(t *testing.T) {
 	}
 	svc := NewReportService(txRepo, accounts, categories, assets, repository.NewSettingsRepo(db), NewBudgetService(repository.NewBudgetRepo(db), categories, txRepo))
 
-	d, err := svc.Dashboard(ctx, now.Year(), int(now.Month()))
+	d, err := svc.Dashboard(ctx, now.Year(), int(now.Month()), nil)
 	if err != nil || d.Spent != 500 || d.TransferredOut != 1000 || len(d.SpendingByCategory) != 1 || len(d.SpendingByCategory[0].Children) != 2 {
 		t.Fatalf("dashboard %+v, err %v", d, err)
+	}
+	// the card only received a transfer: no income, no spending
+	d, err = svc.Dashboard(ctx, now.Year(), int(now.Month()), &card)
+	if err != nil || d.Income != 0 || d.Spent != 0 || d.TransferredOut != 0 || len(d.SpendingByCategory) != 0 {
+		t.Fatalf("card dashboard %+v, err %v", d, err)
 	}
 	// cash: 5000 - 500 - 1000 moved to the card = 3500, plus the car
 	nw, err := svc.NetWorth(ctx, "last_30_days")

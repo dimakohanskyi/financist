@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"time"
 
@@ -48,17 +49,22 @@ func NewReportService(txs LedgerSource, accounts AccountLister, categories Categ
 // chartSlices is how many categories the dashboard shows before folding the rest into one.
 const chartSlices = 8
 
-func (s *ReportService) Dashboard(ctx context.Context, year, month int) (model.Dashboard, error) {
+// Dashboard covers every account, or just accountID's own transactions when set.
+// Transfers into that account aren't income, same as across all accounts.
+func (s *ReportService) Dashboard(ctx context.Context, year, month int, accountID *int64) (model.Dashboard, error) {
 	d := model.Dashboard{Year: year, Month: month}
 	ledger, err := s.txs.Ledger(ctx)
 	if err != nil {
 		return d, err
 	}
+	if accountID != nil {
+		ledger = slices.DeleteFunc(ledger, func(t model.Transaction) bool { return t.AccountID != *accountID })
+	}
 	totals := monthlyTotals(ledger)[[2]int{year, month}]
 	d.Income, d.Spent, d.TransferredOut = totals.income, totals.expense, totals.transferred
 
 	from, to := model.MonthRange(year, month)
-	items, err := s.rollup(ctx, model.ContributionFilter{Type: model.TransactionExpense, From: &from, To: &to})
+	items, err := s.rollup(ctx, model.ContributionFilter{Type: model.TransactionExpense, From: &from, To: &to, AccountID: accountID})
 	if err != nil {
 		return d, err
 	}

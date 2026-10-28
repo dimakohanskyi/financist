@@ -24,8 +24,9 @@ type Contribution struct {
 }
 
 type ContributionFilter struct {
-	Type     string // "" for any
-	From, To *time.Time
+	Type      string // "" for any
+	From, To  *time.Time
+	AccountID *int64 // nil for every account
 }
 
 // MonthRange returns the first and last moment of a month in UTC.

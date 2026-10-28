@@ -36,12 +36,13 @@ export function mapCategoryAmount(c: GqlCategoryAmount): CategoryBreakdownItem &
   };
 }
 
-export async function fetchDashboardSummary(year: number, month: number): Promise<DashboardSummary> {
+/** accountId narrows to that account; omitted means every account. */
+export async function fetchDashboardSummary(year: number, month: number, accountId?: number): Promise<DashboardSummary> {
   const data = await gql<{
     dashboard: { year: number; month: number; income: number; spent: number; net: number; transferredOut: number; spendingByCategory: GqlCategoryAmount[] };
   }>(
-    `query($year: Int, $month: Int) { dashboard(year: $year, month: $month) { year month income spent net transferredOut spendingByCategory { ${CATEGORY_AMOUNT_FIELDS} } } }`,
-    { year, month }
+    `query($year: Int, $month: Int, $accountId: ID) { dashboard(year: $year, month: $month, accountId: $accountId) { year month income spent net transferredOut spendingByCategory { ${CATEGORY_AMOUNT_FIELDS} } } }`,
+    { year, month, accountId }
   );
   const d = data.dashboard;
   return {

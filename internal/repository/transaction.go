@@ -230,6 +230,9 @@ func (r *TransactionRepo) Contributions(ctx context.Context, f model.Contributio
 		if f.To != nil {
 			q = q.Where("t.date <= ?", f.To.UTC())
 		}
+		if f.AccountID != nil {
+			q = q.Where("t.account_id = ?", *f.AccountID)
+		}
 		return q
 	}
 	// two queries, not a UNION, so date keeps its column type and scans as time

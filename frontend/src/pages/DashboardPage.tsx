@@ -5,6 +5,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { SpendingByCategoryCard } from "@/components/dashboard/SpendingByCategoryCard";
 import { RecentTransactionsCard } from "@/components/dashboard/RecentTransactionsCard";
 import { AlertBanner } from "@/components/insights/AlertBanner";
+import { Select } from "@/components/ui/Input";
+import { useAccounts } from "@/hooks/useAccounts";
 import { useDashboardSummary } from "@/hooks/useDashboard";
 import { useTransactionYears } from "@/hooks/useTransactions";
 import { formatCurrency, formatSignedCurrency } from "@/lib/format";
@@ -27,8 +29,11 @@ export function DashboardPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const { data: years } = useTransactionYears();
+  const { data: accounts } = useAccounts();
+  // undefined = every account, the default
+  const [accountId, setAccountId] = useState<number>();
 
-  const { data, isLoading, isError } = useDashboardSummary(year, month);
+  const { data, isLoading, isError } = useDashboardSummary(year, month, accountId);
   const rate = data ? savingsRate(Number(data.real_income), Number(data.net)) : null;
 
   return (
@@ -40,6 +45,19 @@ export function DashboardPage() {
           <MonthSelector month={month} onChange={setMonth} />
         </div>
         <YearSelector years={years ?? [now.getFullYear()]} year={year} onChange={setYear} />
+        <Select
+          aria-label={t("dashboard.accountFilterLabel")}
+          value={accountId ?? ""}
+          onChange={(event) => setAccountId(event.target.value ? Number(event.target.value) : undefined)}
+          className="w-auto max-w-48"
+        >
+          <option value="">{t("dashboard.allAccounts")}</option>
+          {accounts?.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {isError && (
@@ -77,7 +95,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <SpendingByCategoryCard items={data?.spending_by_category ?? []} />
-        <RecentTransactionsCard year={year} month={month} />
+        <RecentTransactionsCard year={year} month={month} accountId={accountId} />
       </div>
     </div>
   );

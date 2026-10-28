@@ -250,7 +250,7 @@ type ComplexityRoot struct {
 		Category              func(childComplexity int, id string) int
 		CategoryRanking       func(childComplexity int, kind model.CategoryKind, from *time.Time, to *time.Time) int
 		CategorySpending      func(childComplexity int, categoryID string, from *time.Time, to *time.Time) int
-		Dashboard             func(childComplexity int, year *int32, month *int32) int
+		Dashboard             func(childComplexity int, year *int32, month *int32, accountID *string) int
 		Goals                 func(childComplexity int) int
 		NetWorth              func(childComplexity int, rangeArg model.NetWorthRange) int
 		Ping                  func(childComplexity int) int
@@ -391,7 +391,7 @@ type QueryResolver interface {
 	Categories(ctx context.Context, kind *model.CategoryKind) ([]*model.Category, error)
 	Goals(ctx context.Context) ([]*model.Goal, error)
 	RecurringTransactions(ctx context.Context) ([]*model.RecurringTransaction, error)
-	Dashboard(ctx context.Context, year *int32, month *int32) (*model.Dashboard, error)
+	Dashboard(ctx context.Context, year *int32, month *int32, accountID *string) (*model.Dashboard, error)
 	CashFlow(ctx context.Context, from *time.Time, to *time.Time) (*model.CashFlow, error)
 	CategorySpending(ctx context.Context, categoryID string, from *time.Time, to *time.Time) (*model.CategorySpending, error)
 	CategoryRanking(ctx context.Context, kind model.CategoryKind, from *time.Time, to *time.Time) (*model.CategoryRanking, error)
@@ -1514,7 +1514,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Dashboard(childComplexity, args["year"].(*int32), args["month"].(*int32)), true
+		return e.ComplexityRoot.Query.Dashboard(childComplexity, args["year"].(*int32), args["month"].(*int32), args["accountId"].(*string)), true
 	case "Query.goals":
 		if e.ComplexityRoot.Query.Goals == nil {
 			break
@@ -3272,6 +3272,14 @@ func (ec *executionContext) field_Query_dashboard_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["month"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "accountId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["accountId"] = arg2
 	return args, nil
 }
 
@@ -7647,7 +7655,7 @@ func (ec *executionContext) _Query_dashboard(ctx context.Context, field graphql.
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Dashboard(ctx, fc.Args["year"].(*int32), fc.Args["month"].(*int32))
+			return ec.Resolvers.Query().Dashboard(ctx, fc.Args["year"].(*int32), fc.Args["month"].(*int32), fc.Args["accountId"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.Dashboard) graphql.Marshaler {

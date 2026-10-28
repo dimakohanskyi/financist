@@ -59,6 +59,8 @@ const ru = {
   "auth.noAuthModalBody": "Этот экземпляр Aurum не защищён паролем — все данные доступны любому, кто до него достучится. Задайте AURUM_BASIC_AUTH_USER и AURUM_BASIC_AUTH_PASSWORD в .env, чтобы включить вход.",
   "auth.noAuthModalAccept": "Я понимаю риски и хочу продолжить",
 
+  "dashboard.allAccounts": "Все счета",
+  "dashboard.accountFilterLabel": "Счёт",
   "dashboard.errorLoading": "Не удалось загрузить данные дашборда. Проверьте, что backend запущен.",
   "dashboard.statRealIncomeLabel": "Реальный доход",
   "dashboard.statRealIncomeCaption": "зарплаты, возвраты",
@@ -584,6 +586,8 @@ const en: Record<keyof typeof ru, string> = {
   "auth.noAuthModalBody": "This Aurum instance has no password protection — all data is accessible to anyone who can reach it. Set AURUM_BASIC_AUTH_USER and AURUM_BASIC_AUTH_PASSWORD in .env to enable login.",
   "auth.noAuthModalAccept": "I understand the risk and want to continue",
 
+  "dashboard.allAccounts": "All accounts",
+  "dashboard.accountFilterLabel": "Account",
   "dashboard.errorLoading": "Failed to load dashboard data. Check that the backend is running.",
   "dashboard.statRealIncomeLabel": "Real income",
   "dashboard.statRealIncomeCaption": "paychecks, refunds",

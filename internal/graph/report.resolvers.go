@@ -23,9 +23,13 @@ func (r *categorySpendingResolver) Category(ctx context.Context, obj *model.Cate
 }
 
 // Dashboard is the resolver for the dashboard field.
-func (r *queryResolver) Dashboard(ctx context.Context, year *int32, month *int32) (*model.Dashboard, error) {
+func (r *queryResolver) Dashboard(ctx context.Context, year *int32, month *int32, accountID *string) (*model.Dashboard, error) {
 	y, m := yearMonth(year, month)
-	d, err := r.Reports.Dashboard(ctx, y, m)
+	account, err := parseOptionalID(accountID)
+	if err != nil {
+		return nil, err
+	}
+	d, err := r.Reports.Dashboard(ctx, y, m, account)
 	if err != nil {
 		return nil, err
 	}

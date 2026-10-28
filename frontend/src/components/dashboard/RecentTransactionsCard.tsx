@@ -10,11 +10,12 @@ import { useCategories } from "@/hooks/useCategories";
 interface RecentTransactionsCardProps {
   year: number;
   month: number;
+  accountId?: number;
 }
 
-export function RecentTransactionsCard({ year, month }: RecentTransactionsCardProps) {
+export function RecentTransactionsCard({ year, month, accountId }: RecentTransactionsCardProps) {
   const { t } = useTranslation();
-  const { data, isLoading } = useTransactions({ year, month, page: 1, page_size: 6 });
+  const { data, isLoading } = useTransactions({ year, month, account_id: accountId, page: 1, page_size: 6 });
   const { data: categories } = useCategories();
 
   return (
