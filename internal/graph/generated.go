@@ -31,6 +31,7 @@ type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
 	Account() AccountResolver
+	Asset() AssetResolver
 	Budget() BudgetResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -48,6 +49,26 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		IsArchived  func(childComplexity int) int
 		Name        func(childComplexity int) int
+	}
+
+	Asset struct {
+		AsOfDate        func(childComplexity int) int
+		AssetClass      func(childComplexity int) int
+		CapitalRole     func(childComplexity int) int
+		Currency        func(childComplexity int) int
+		CurrentValue    func(childComplexity int) int
+		ID              func(childComplexity int) int
+		MonthlyCashFlow func(childComplexity int) int
+		Name            func(childComplexity int) int
+		Notes           func(childComplexity int) int
+		RiskLevel       func(childComplexity int) int
+		Valuations      func(childComplexity int) int
+	}
+
+	AssetValuation struct {
+		AsOfDate func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Value    func(childComplexity int) int
 	}
 
 	Budget struct {
@@ -88,9 +109,11 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AddAssetValuation          func(childComplexity int, assetID string, value int, asOfDate *time.Time) int
 		AddGoalContribution        func(childComplexity int, goalID string, amount int, date time.Time, note *string) int
 		BulkCreateTransactions     func(childComplexity int, inputs []*model.CreateTransactionInput) int
 		CreateAccount              func(childComplexity int, input model.CreateAccountInput) int
+		CreateAsset                func(childComplexity int, input model.CreateAssetInput) int
 		CreateBudget               func(childComplexity int, categoryID string, monthlyLimit int) int
 		CreateCategory             func(childComplexity int, input model.CreateCategoryInput) int
 		CreateGoal                 func(childComplexity int, input model.CreateGoalInput) int
@@ -98,6 +121,7 @@ type ComplexityRoot struct {
 		CreateTag                  func(childComplexity int, name string) int
 		CreateTransaction          func(childComplexity int, input model.CreateTransactionInput) int
 		DeleteAccount              func(childComplexity int, id string) int
+		DeleteAsset                func(childComplexity int, id string) int
 		DeleteBudget               func(childComplexity int, id string) int
 		DeleteCategory             func(childComplexity int, id string) int
 		DeleteGoal                 func(childComplexity int, id string) int
@@ -106,6 +130,7 @@ type ComplexityRoot struct {
 		DeleteTransaction          func(childComplexity int, id string) int
 		PostRecurringTransaction   func(childComplexity int, id string) int
 		UpdateAccount              func(childComplexity int, id string, input model.UpdateAccountInput) int
+		UpdateAsset                func(childComplexity int, id string, input model.UpdateAssetInput) int
 		UpdateBudget               func(childComplexity int, id string, monthlyLimit int) int
 		UpdateCategory             func(childComplexity int, id string, input model.UpdateCategoryInput) int
 		UpdateGoal                 func(childComplexity int, id string, input model.UpdateGoalInput) int
@@ -116,6 +141,8 @@ type ComplexityRoot struct {
 	Query struct {
 		Account               func(childComplexity int, id string) int
 		Accounts              func(childComplexity int, includeArchived *bool) int
+		Asset                 func(childComplexity int, id string) int
+		Assets                func(childComplexity int) int
 		BudgetStatus          func(childComplexity int, year *int32, month *int32) int
 		Budgets               func(childComplexity int) int
 		Categories            func(childComplexity int, kind *model.CategoryKind) int
@@ -188,6 +215,9 @@ type ComplexityRoot struct {
 type AccountResolver interface {
 	Balance(ctx context.Context, obj *model.Account) (int, error)
 }
+type AssetResolver interface {
+	Valuations(ctx context.Context, obj *model.Asset) ([]*model.AssetValuation, error)
+}
 type BudgetResolver interface {
 	Category(ctx context.Context, obj *model.Budget) (*model.Category, error)
 }
@@ -195,6 +225,10 @@ type MutationResolver interface {
 	CreateAccount(ctx context.Context, input model.CreateAccountInput) (*model.Account, error)
 	UpdateAccount(ctx context.Context, id string, input model.UpdateAccountInput) (*model.Account, error)
 	DeleteAccount(ctx context.Context, id string) (bool, error)
+	CreateAsset(ctx context.Context, input model.CreateAssetInput) (*model.Asset, error)
+	UpdateAsset(ctx context.Context, id string, input model.UpdateAssetInput) (*model.Asset, error)
+	DeleteAsset(ctx context.Context, id string) (bool, error)
+	AddAssetValuation(ctx context.Context, assetID string, value int, asOfDate *time.Time) (*model.Asset, error)
 	CreateBudget(ctx context.Context, categoryID string, monthlyLimit int) (*model.Budget, error)
 	UpdateBudget(ctx context.Context, id string, monthlyLimit int) (*model.Budget, error)
 	DeleteBudget(ctx context.Context, id string) (bool, error)
@@ -220,6 +254,8 @@ type QueryResolver interface {
 	Ping(ctx context.Context) (string, error)
 	Account(ctx context.Context, id string) (*model.Account, error)
 	Accounts(ctx context.Context, includeArchived *bool) ([]*model.Account, error)
+	Assets(ctx context.Context) ([]*model.Asset, error)
+	Asset(ctx context.Context, id string) (*model.Asset, error)
 	Budgets(ctx context.Context) ([]*model.Budget, error)
 	BudgetStatus(ctx context.Context, year *int32, month *int32) ([]*model.BudgetStatus, error)
 	Category(ctx context.Context, id string) (*model.Category, error)
@@ -292,6 +328,92 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.Name(childComplexity), true
+
+	case "Asset.asOfDate":
+		if e.ComplexityRoot.Asset.AsOfDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.AsOfDate(childComplexity), true
+	case "Asset.assetClass":
+		if e.ComplexityRoot.Asset.AssetClass == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.AssetClass(childComplexity), true
+	case "Asset.capitalRole":
+		if e.ComplexityRoot.Asset.CapitalRole == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.CapitalRole(childComplexity), true
+	case "Asset.currency":
+		if e.ComplexityRoot.Asset.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.Currency(childComplexity), true
+	case "Asset.currentValue":
+		if e.ComplexityRoot.Asset.CurrentValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.CurrentValue(childComplexity), true
+	case "Asset.id":
+		if e.ComplexityRoot.Asset.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.ID(childComplexity), true
+	case "Asset.monthlyCashFlow":
+		if e.ComplexityRoot.Asset.MonthlyCashFlow == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.MonthlyCashFlow(childComplexity), true
+	case "Asset.name":
+		if e.ComplexityRoot.Asset.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.Name(childComplexity), true
+	case "Asset.notes":
+		if e.ComplexityRoot.Asset.Notes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.Notes(childComplexity), true
+	case "Asset.riskLevel":
+		if e.ComplexityRoot.Asset.RiskLevel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.RiskLevel(childComplexity), true
+	case "Asset.valuations":
+		if e.ComplexityRoot.Asset.Valuations == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Asset.Valuations(childComplexity), true
+
+	case "AssetValuation.asOfDate":
+		if e.ComplexityRoot.AssetValuation.AsOfDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetValuation.AsOfDate(childComplexity), true
+	case "AssetValuation.id":
+		if e.ComplexityRoot.AssetValuation.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetValuation.ID(childComplexity), true
+	case "AssetValuation.value":
+		if e.ComplexityRoot.AssetValuation.Value == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetValuation.Value(childComplexity), true
 
 	case "Budget.category":
 		if e.ComplexityRoot.Budget.Category == nil {
@@ -447,6 +569,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Goal.TargetDate(childComplexity), true
 
+	case "Mutation.addAssetValuation":
+		if e.ComplexityRoot.Mutation.AddAssetValuation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addAssetValuation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddAssetValuation(childComplexity, args["assetId"].(string), args["value"].(int), args["asOfDate"].(*time.Time)), true
 	case "Mutation.addGoalContribution":
 		if e.ComplexityRoot.Mutation.AddGoalContribution == nil {
 			break
@@ -480,6 +613,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateAccount(childComplexity, args["input"].(model.CreateAccountInput)), true
+	case "Mutation.createAsset":
+		if e.ComplexityRoot.Mutation.CreateAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateAsset(childComplexity, args["input"].(model.CreateAssetInput)), true
 	case "Mutation.createBudget":
 		if e.ComplexityRoot.Mutation.CreateBudget == nil {
 			break
@@ -557,6 +701,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteAccount(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteAsset":
+		if e.ComplexityRoot.Mutation.DeleteAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteAsset(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteBudget":
 		if e.ComplexityRoot.Mutation.DeleteBudget == nil {
 			break
@@ -645,6 +800,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateAccount(childComplexity, args["id"].(string), args["input"].(model.UpdateAccountInput)), true
+	case "Mutation.updateAsset":
+		if e.ComplexityRoot.Mutation.UpdateAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateAsset(childComplexity, args["id"].(string), args["input"].(model.UpdateAssetInput)), true
 	case "Mutation.updateBudget":
 		if e.ComplexityRoot.Mutation.UpdateBudget == nil {
 			break
@@ -723,6 +889,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Accounts(childComplexity, args["includeArchived"].(*bool)), true
+	case "Query.asset":
+		if e.ComplexityRoot.Query.Asset == nil {
+			break
+		}
+
+		args, err := ec.field_Query_asset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Asset(childComplexity, args["id"].(string)), true
+	case "Query.assets":
+		if e.ComplexityRoot.Query.Assets == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Assets(childComplexity), true
 	case "Query.budgetStatus":
 		if e.ComplexityRoot.Query.BudgetStatus == nil {
 			break
@@ -1046,12 +1229,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateAccountInput,
+		ec.unmarshalInputCreateAssetInput,
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateGoalInput,
 		ec.unmarshalInputCreateRecurringTransactionInput,
 		ec.unmarshalInputCreateTransactionInput,
 		ec.unmarshalInputTransactionSplitInput,
 		ec.unmarshalInputUpdateAccountInput,
+		ec.unmarshalInputUpdateAssetInput,
 		ec.unmarshalInputUpdateCategoryInput,
 		ec.unmarshalInputUpdateGoalInput,
 		ec.unmarshalInputUpdateRecurringTransactionInput,
@@ -1130,7 +1315,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema.graphqls" "account/account.graphqls" "budget/budget.graphqls" "category/category.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
+//go:embed "schema.graphqls" "account/account.graphqls" "asset/asset.graphqls" "budget/budget.graphqls" "category/category.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1144,6 +1329,7 @@ func sourceData(filename string) string {
 var sources = []*ast.Source{
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 	{Name: "account/account.graphqls", Input: sourceData("account/account.graphqls"), BuiltIn: false},
+	{Name: "asset/asset.graphqls", Input: sourceData("asset/asset.graphqls"), BuiltIn: false},
 	{Name: "budget/budget.graphqls", Input: sourceData("budget/budget.graphqls"), BuiltIn: false},
 	{Name: "category/category.graphqls", Input: sourceData("category/category.graphqls"), BuiltIn: false},
 	{Name: "goal/goal.graphqls", Input: sourceData("goal/goal.graphqls"), BuiltIn: false},
@@ -1175,6 +1361,46 @@ func (ec *executionContext) childFields_Account(ctx context.Context, field graph
 		return ec.fieldContext_Account_balance(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
+}
+
+func (ec *executionContext) childFields_Asset(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Asset_id(ctx, field)
+	case "name":
+		return ec.fieldContext_Asset_name(ctx, field)
+	case "assetClass":
+		return ec.fieldContext_Asset_assetClass(ctx, field)
+	case "currency":
+		return ec.fieldContext_Asset_currency(ctx, field)
+	case "notes":
+		return ec.fieldContext_Asset_notes(ctx, field)
+	case "capitalRole":
+		return ec.fieldContext_Asset_capitalRole(ctx, field)
+	case "monthlyCashFlow":
+		return ec.fieldContext_Asset_monthlyCashFlow(ctx, field)
+	case "riskLevel":
+		return ec.fieldContext_Asset_riskLevel(ctx, field)
+	case "currentValue":
+		return ec.fieldContext_Asset_currentValue(ctx, field)
+	case "asOfDate":
+		return ec.fieldContext_Asset_asOfDate(ctx, field)
+	case "valuations":
+		return ec.fieldContext_Asset_valuations(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
+}
+
+func (ec *executionContext) childFields_AssetValuation(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_AssetValuation_id(ctx, field)
+	case "value":
+		return ec.fieldContext_AssetValuation_value(ctx, field)
+	case "asOfDate":
+		return ec.fieldContext_AssetValuation_asOfDate(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AssetValuation", field.Name)
 }
 
 func (ec *executionContext) childFields_Budget(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -1469,6 +1695,36 @@ func (ec *executionContext) childFields___Type(ctx context.Context, field graphq
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_addAssetValuation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "assetId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "value",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt642int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["value"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "asOfDate",
+		func(ctx context.Context, v any) (*time.Time, error) {
+			return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["asOfDate"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addGoalContribution_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1527,6 +1783,20 @@ func (ec *executionContext) field_Mutation_createAccount_args(ctx context.Contex
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.CreateAccountInput, error) {
 			return ec.unmarshalNCreateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateAccountInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.CreateAssetInput, error) {
+			return ec.unmarshalNCreateAssetInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateAssetInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -1628,6 +1898,20 @@ func (ec *executionContext) field_Mutation_createTransaction_args(ctx context.Co
 }
 
 func (ec *executionContext) field_Mutation_deleteAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
@@ -1753,6 +2037,28 @@ func (ec *executionContext) field_Mutation_updateAccount_args(ctx context.Contex
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.UpdateAccountInput, error) {
 			return ec.unmarshalNUpdateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAccountInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateAssetInput, error) {
+			return ec.unmarshalNUpdateAssetInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAssetInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -1910,6 +2216,20 @@ func (ec *executionContext) field_Query_accounts_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["includeArchived"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_asset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -2282,6 +2602,337 @@ func (ec *executionContext) _Account_balance(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Account_balance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Account", field, true, true, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_id(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_name(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_assetClass(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_assetClass(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AssetClass, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.AssetClass) graphql.Marshaler {
+			return ec.marshalNAssetClass2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_assetClass(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type AssetClass does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_currency(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_notes(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_notes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Notes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_notes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_capitalRole(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_capitalRole(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CapitalRole, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.CapitalRole) graphql.Marshaler {
+			return ec.marshalNCapitalRole2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_capitalRole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type CapitalRole does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_monthlyCashFlow(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_monthlyCashFlow(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MonthlyCashFlow, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt642ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_monthlyCashFlow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_riskLevel(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_riskLevel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RiskLevel, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.RiskLevel) graphql.Marshaler {
+			return ec.marshalNRiskLevel2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_riskLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type RiskLevel does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_currentValue(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_currentValue(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentValue, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_currentValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_asOfDate(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_asOfDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AsOfDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_asOfDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Asset", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Asset_valuations(ctx context.Context, field graphql.CollectedField, obj *model.Asset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Asset_valuations(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Asset().Valuations(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.AssetValuation) graphql.Marshaler {
+			return ec.marshalNAssetValuation2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetValuationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Asset_valuations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Asset",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AssetValuation(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssetValuation_id(ctx context.Context, field graphql.CollectedField, obj *model.AssetValuation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetValuation_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetValuation_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetValuation", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AssetValuation_value(ctx context.Context, field graphql.CollectedField, obj *model.AssetValuation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetValuation_value(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetValuation_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetValuation", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _AssetValuation_asOfDate(ctx context.Context, field graphql.CollectedField, obj *model.AssetValuation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetValuation_asOfDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AsOfDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetValuation_asOfDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetValuation", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
 func (ec *executionContext) _Budget_id(ctx context.Context, field graphql.CollectedField, obj *model.Budget) (ret graphql.Marshaler) {
@@ -3003,6 +3654,182 @@ func (ec *executionContext) fieldContext_Mutation_deleteAccount(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createAsset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateAsset(ctx, fc.Args["input"].(model.CreateAssetInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+			return ec.marshalNAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateAsset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateAsset(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateAssetInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+			return ec.marshalNAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteAsset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteAsset(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addAssetValuation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addAssetValuation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddAssetValuation(ctx, fc.Args["assetId"].(string), fc.Args["value"].(int), fc.Args["asOfDate"].(*time.Time))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+			return ec.marshalNAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addAssetValuation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addAssetValuation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3994,6 +4821,82 @@ func (ec *executionContext) fieldContext_Query_accounts(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_accounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_assets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_assets(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Assets(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Asset) graphql.Marshaler {
+			return ec.marshalNAsset2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_assets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_asset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_asset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Asset(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+			return ec.marshalOAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_asset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_asset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -6412,6 +7315,105 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, obj any) (model.CreateAssetInput, error) {
+	var it model.CreateAssetInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["currency"]; !present {
+		asMap["currency"] = "USD"
+	}
+	if _, present := asMap["notes"]; !present {
+		asMap["notes"] = ""
+	}
+	if _, present := asMap["capitalRole"]; !present {
+		asMap["capitalRole"] = "neutral"
+	}
+	if _, present := asMap["riskLevel"]; !present {
+		asMap["riskLevel"] = "medium"
+	}
+
+	fieldsInOrder := [...]string{"name", "assetClass", "currency", "notes", "capitalRole", "monthlyCashFlow", "riskLevel", "value", "asOfDate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "assetClass":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetClass"))
+			data, err := ec.unmarshalNAssetClass2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AssetClass = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalNCurrency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		case "capitalRole":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("capitalRole"))
+			data, err := ec.unmarshalNCapitalRole2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CapitalRole = data
+		case "monthlyCashFlow":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monthlyCashFlow"))
+			data, err := ec.unmarshalOInt642ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MonthlyCashFlow = data
+		case "riskLevel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("riskLevel"))
+			data, err := ec.unmarshalNRiskLevel2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RiskLevel = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNInt642int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		case "asOfDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("asOfDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AsOfDate = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Context, obj any) (model.CreateCategoryInput, error) {
 	var it model.CreateCategoryInput
 	if obj == nil {
@@ -6850,6 +7852,78 @@ func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateAssetInput(ctx context.Context, obj any) (model.UpdateAssetInput, error) {
+	var it model.UpdateAssetInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "assetClass", "currency", "notes", "capitalRole", "monthlyCashFlow", "riskLevel"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "assetClass":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetClass"))
+			data, err := ec.unmarshalOAssetClass2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AssetClass = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOCurrency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		case "capitalRole":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("capitalRole"))
+			data, err := ec.unmarshalOCapitalRole2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CapitalRole = data
+		case "monthlyCashFlow":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monthlyCashFlow"))
+			data, err := ec.unmarshalOInt642ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MonthlyCashFlow = graphql.OmittableOf(data)
+		case "riskLevel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("riskLevel"))
+			data, err := ec.unmarshalORiskLevel2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RiskLevel = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Context, obj any) (model.UpdateCategoryInput, error) {
 	var it model.UpdateCategoryInput
 	if obj == nil {
@@ -7261,6 +8335,175 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var assetImplementors = []string{"Asset"}
+
+func (ec *executionContext) _Asset(ctx context.Context, sel ast.SelectionSet, obj *model.Asset) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Asset")
+		case "id":
+			out.Values[i] = ec._Asset_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._Asset_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "assetClass":
+			out.Values[i] = ec._Asset_assetClass(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "currency":
+			out.Values[i] = ec._Asset_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "notes":
+			out.Values[i] = ec._Asset_notes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "capitalRole":
+			out.Values[i] = ec._Asset_capitalRole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "monthlyCashFlow":
+			out.Values[i] = ec._Asset_monthlyCashFlow(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "riskLevel":
+			out.Values[i] = ec._Asset_riskLevel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "currentValue":
+			out.Values[i] = ec._Asset_currentValue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "asOfDate":
+			out.Values[i] = ec._Asset_asOfDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "valuations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Asset_valuations(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var assetValuationImplementors = []string{"AssetValuation"}
+
+func (ec *executionContext) _AssetValuation(ctx context.Context, sel ast.SelectionSet, obj *model.AssetValuation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assetValuationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssetValuation")
+		case "id":
+			out.Values[i] = ec._AssetValuation_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._AssetValuation_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "asOfDate":
+			out.Values[i] = ec._AssetValuation_asOfDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var budgetImplementors = []string{"Budget"}
 
 func (ec *executionContext) _Budget(ctx context.Context, sel ast.SelectionSet, obj *model.Budget) graphql.Marshaler {
@@ -7592,6 +8835,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createAsset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createAsset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAsset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAsset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteAsset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteAsset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addAssetValuation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addAssetValuation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createBudget":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createBudget(ctx, field)
@@ -7828,6 +9099,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}()
 				res = ec._Query_accounts(ctx, field)
 				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "assets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_assets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "asset":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_asset(ctx, field)
+				if res == graphql.RequiredNull {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
 				return res
@@ -8867,6 +10182,68 @@ func (ec *executionContext) marshalNAccountType2githubᚗcomᚋdimakohanskyiᚋf
 	return v
 }
 
+func (ec *executionContext) marshalNAsset2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Asset) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx context.Context, sel ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Asset(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAssetClass2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx context.Context, v any) (model.AssetClass, error) {
+	var res model.AssetClass
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAssetClass2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx context.Context, sel ast.SelectionSet, v model.AssetClass) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNAssetValuation2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetValuationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AssetValuation) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAssetValuation2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetValuation(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAssetValuation2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetValuation(ctx context.Context, sel ast.SelectionSet, v *model.AssetValuation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssetValuation(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -8935,6 +10312,16 @@ func (ec *executionContext) marshalNBudgetStatus2ᚖgithubᚗcomᚋdimakohanskyi
 	return ec._BudgetStatus(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCapitalRole2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx context.Context, v any) (model.CapitalRole, error) {
+	var res model.CapitalRole
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCapitalRole2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx context.Context, sel ast.SelectionSet, v model.CapitalRole) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Category) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -8973,6 +10360,11 @@ func (ec *executionContext) marshalNCategoryKind2githubᚗcomᚋdimakohanskyiᚋ
 
 func (ec *executionContext) unmarshalNCreateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateAccountInput(ctx context.Context, v any) (model.CreateAccountInput, error) {
 	res, err := ec.unmarshalInputCreateAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateAssetInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateAssetInput(ctx context.Context, v any) (model.CreateAssetInput, error) {
+	res, err := ec.unmarshalInputCreateAssetInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -9180,6 +10572,16 @@ func (ec *executionContext) marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimak
 	return ec._RecurringTransaction(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRiskLevel2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx context.Context, v any) (model.RiskLevel, error) {
+	var res model.RiskLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRiskLevel2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx context.Context, sel ast.SelectionSet, v model.RiskLevel) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9317,6 +10719,11 @@ func (ec *executionContext) marshalNTransactionType2githubᚗcomᚋdimakohanskyi
 
 func (ec *executionContext) unmarshalNUpdateAccountInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAccountInput(ctx context.Context, v any) (model.UpdateAccountInput, error) {
 	res, err := ec.unmarshalInputUpdateAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateAssetInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateAssetInput(ctx context.Context, v any) (model.UpdateAssetInput, error) {
+	res, err := ec.unmarshalInputUpdateAssetInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -9503,6 +10910,29 @@ func (ec *executionContext) marshalOAccountType2ᚖgithubᚗcomᚋdimakohanskyi�
 	return v
 }
 
+func (ec *executionContext) marshalOAsset2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAsset(ctx context.Context, sel ast.SelectionSet, v *model.Asset) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Asset(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAssetClass2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx context.Context, v any) (*model.AssetClass, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.AssetClass)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAssetClass2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐAssetClass(ctx context.Context, sel ast.SelectionSet, v *model.AssetClass) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9531,6 +10961,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOCapitalRole2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx context.Context, v any) (*model.CapitalRole, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.CapitalRole)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCapitalRole2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCapitalRole(ctx context.Context, sel ast.SelectionSet, v *model.CapitalRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOCategory2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCategory(ctx context.Context, sel ast.SelectionSet, v *model.Category) graphql.Marshaler {
@@ -9671,6 +11117,22 @@ func (ec *executionContext) unmarshalORecurringFrequency2ᚖgithubᚗcomᚋdimak
 }
 
 func (ec *executionContext) marshalORecurringFrequency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx context.Context, sel ast.SelectionSet, v *model.RecurringFrequency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalORiskLevel2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx context.Context, v any) (*model.RiskLevel, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.RiskLevel)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORiskLevel2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRiskLevel(ctx context.Context, sel ast.SelectionSet, v *model.RiskLevel) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

@@ -214,3 +214,22 @@ func toGoal(g *domain.Goal) *model.Goal {
 		IsReached:     g.CurrentAmount >= g.TargetAmount,
 	}
 }
+
+func toAsset(a *domain.Asset) *model.Asset {
+	out := &model.Asset{
+		ID:           strconv.FormatInt(a.ID, 10),
+		Name:         a.Name,
+		AssetClass:   model.AssetClass(a.AssetClass),
+		Currency:     model.Currency(a.Currency),
+		Notes:        a.Notes,
+		CapitalRole:  model.CapitalRole(a.CapitalRole),
+		RiskLevel:    model.RiskLevel(a.RiskLevel),
+		CurrentValue: int(a.CurrentValue),
+		AsOfDate:     a.AsOfDate,
+	}
+	if a.MonthlyCashFlow != nil {
+		v := int(*a.MonthlyCashFlow)
+		out.MonthlyCashFlow = &v
+	}
+	return out
+}

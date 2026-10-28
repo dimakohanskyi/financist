@@ -24,6 +24,30 @@ type Account struct {
 	Balance int `json:"balance"`
 }
 
+// A manually valued part of net worth. Cash isn't one: it comes from account balances
+type Asset struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	AssetClass  AssetClass  `json:"assetClass"`
+	Currency    Currency    `json:"currency"`
+	Notes       string      `json:"notes"`
+	CapitalRole CapitalRole `json:"capitalRole"`
+	// Rough self-reported net per month, informational only
+	MonthlyCashFlow *int      `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       RiskLevel `json:"riskLevel"`
+	// Latest valuation
+	CurrentValue int        `json:"currentValue"`
+	AsOfDate     *time.Time `json:"asOfDate,omitempty"`
+	// Oldest first
+	Valuations []*AssetValuation `json:"valuations"`
+}
+
+type AssetValuation struct {
+	ID       string    `json:"id"`
+	Value    int       `json:"value"`
+	AsOfDate time.Time `json:"asOfDate"`
+}
+
 // A monthly spending limit on an expense category, covering its subcategories too
 type Budget struct {
 	ID           string    `json:"id"`
@@ -62,6 +86,20 @@ type CreateAccountInput struct {
 	AccountType AccountType `json:"accountType"`
 	Currency    Currency    `json:"currency"`
 	Color       *string     `json:"color,omitempty"`
+}
+
+type CreateAssetInput struct {
+	Name            string      `json:"name"`
+	AssetClass      AssetClass  `json:"assetClass"`
+	Currency        Currency    `json:"currency"`
+	Notes           *string     `json:"notes,omitempty"`
+	CapitalRole     CapitalRole `json:"capitalRole"`
+	MonthlyCashFlow *int        `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       RiskLevel   `json:"riskLevel"`
+	// First valuation
+	Value int `json:"value"`
+	// Defaults to today
+	AsOfDate *time.Time `json:"asOfDate,omitempty"`
 }
 
 type CreateCategoryInput struct {
@@ -208,6 +246,17 @@ type UpdateAccountInput struct {
 	IsArchived *bool   `json:"isArchived,omitempty"`
 }
 
+type UpdateAssetInput struct {
+	Name        *string      `json:"name,omitempty"`
+	AssetClass  *AssetClass  `json:"assetClass,omitempty"`
+	Currency    *Currency    `json:"currency,omitempty"`
+	Notes       *string      `json:"notes,omitempty"`
+	CapitalRole *CapitalRole `json:"capitalRole,omitempty"`
+	// null clears it
+	MonthlyCashFlow graphql.Omittable[*int] `json:"monthlyCashFlow,omitempty"`
+	RiskLevel       *RiskLevel              `json:"riskLevel,omitempty"`
+}
+
 type UpdateCategoryInput struct {
 	Name *string `json:"name,omitempty"`
 	// Empty string clears it
@@ -318,6 +367,125 @@ func (e *AccountType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccountType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type AssetClass string
+
+const (
+	AssetClassInvestments    AssetClass = "investments"
+	AssetClassRealEstate     AssetClass = "real_estate"
+	AssetClassVehicles       AssetClass = "vehicles"
+	AssetClassPreciousMetals AssetClass = "precious_metals"
+	AssetClassOther          AssetClass = "other"
+)
+
+var AllAssetClass = []AssetClass{
+	AssetClassInvestments,
+	AssetClassRealEstate,
+	AssetClassVehicles,
+	AssetClassPreciousMetals,
+	AssetClassOther,
+}
+
+func (e AssetClass) IsValid() bool {
+	switch e {
+	case AssetClassInvestments, AssetClassRealEstate, AssetClassVehicles, AssetClassPreciousMetals, AssetClassOther:
+		return true
+	}
+	return false
+}
+
+func (e AssetClass) String() string {
+	return string(e)
+}
+
+func (e *AssetClass) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AssetClass(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AssetClass", str)
+	}
+	return nil
+}
+
+func (e AssetClass) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AssetClass) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AssetClass) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// How an asset behaves month to month, set by the user
+type CapitalRole string
+
+const (
+	CapitalRoleIncome  CapitalRole = "income"
+	CapitalRoleNeutral CapitalRole = "neutral"
+	CapitalRoleDrain   CapitalRole = "drain"
+)
+
+var AllCapitalRole = []CapitalRole{
+	CapitalRoleIncome,
+	CapitalRoleNeutral,
+	CapitalRoleDrain,
+}
+
+func (e CapitalRole) IsValid() bool {
+	switch e {
+	case CapitalRoleIncome, CapitalRoleNeutral, CapitalRoleDrain:
+		return true
+	}
+	return false
+}
+
+func (e CapitalRole) String() string {
+	return string(e)
+}
+
+func (e *CapitalRole) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CapitalRole(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CapitalRole", str)
+	}
+	return nil
+}
+
+func (e CapitalRole) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CapitalRole) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CapitalRole) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -489,6 +657,64 @@ func (e *RecurringFrequency) UnmarshalJSON(b []byte) error {
 }
 
 func (e RecurringFrequency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Risk of losing value, set by the user
+type RiskLevel string
+
+const (
+	RiskLevelLow    RiskLevel = "low"
+	RiskLevelMedium RiskLevel = "medium"
+	RiskLevelHigh   RiskLevel = "high"
+)
+
+var AllRiskLevel = []RiskLevel{
+	RiskLevelLow,
+	RiskLevelMedium,
+	RiskLevelHigh,
+}
+
+func (e RiskLevel) IsValid() bool {
+	switch e {
+	case RiskLevelLow, RiskLevelMedium, RiskLevelHigh:
+		return true
+	}
+	return false
+}
+
+func (e RiskLevel) String() string {
+	return string(e)
+}
+
+func (e *RiskLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskLevel", str)
+	}
+	return nil
+}
+
+func (e RiskLevel) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskLevel) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
