@@ -1,0 +1,52 @@
+enum CategoryKind {
+  income
+  expense
+}
+
+type Category {
+  id: ID!
+  name: String!
+  kind: CategoryKind!
+  "Lucide icon name"
+  icon: String
+  "Hex like #2a78d6"
+  color: String!
+  sortOrder: Int!
+  "Seeded defaults can only be deleted once unused"
+  isDefault: Boolean!
+  "Subcategories are one level deep"
+  parentId: ID
+}
+
+extend type Query {
+  category(id: ID!): Category
+  "In display order"
+  categories(kind: CategoryKind): [Category!]!
+}
+
+input CreateCategoryInput {
+  name: String!
+  kind: CategoryKind!
+  icon: String
+  color: String!
+  sortOrder: Int = 0
+  "Must be a top-level category of the same kind"
+  parentId: ID
+}
+
+input UpdateCategoryInput {
+  name: String
+  "Empty string clears it"
+  icon: String
+  color: String
+  sortOrder: Int
+  "null makes it top-level"
+  parentId: ID @goField(omittable: true)
+}
+
+extend type Mutation {
+  createCategory(input: CreateCategoryInput!): Category!
+  updateCategory(id: ID!, input: UpdateCategoryInput!): Category!
+  "Subcategories become top-level, transactions uncategorized"
+  deleteCategory(id: ID!): Boolean!
+}

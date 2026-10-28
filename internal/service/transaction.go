@@ -8,10 +8,14 @@ import (
 	"github.com/dimakohanskyi/financist/internal/model"
 )
 
-var ErrInvalid = errors.New("invalid transaction")
+var ErrInvalid = errors.New("invalid input")
 
 type AccountGetter interface {
 	GetByID(ctx context.Context, id int64) (model.Account, error)
+}
+
+type CategoryGetter interface {
+	GetByID(ctx context.Context, id int64) (model.Category, error)
 }
 
 type TransactionStore interface {
@@ -23,12 +27,13 @@ type TransactionStore interface {
 }
 
 type TransactionService struct {
-	txs      TransactionStore
-	accounts AccountGetter
+	txs        TransactionStore
+	accounts   AccountGetter
+	categories CategoryGetter
 }
 
-func NewTransactionService(txs TransactionStore, accounts AccountGetter) *TransactionService {
-	return &TransactionService{txs, accounts}
+func NewTransactionService(txs TransactionStore, accounts AccountGetter, categories CategoryGetter) *TransactionService {
+	return &TransactionService{txs, accounts, categories}
 }
 
 func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) error {
@@ -51,8 +56,22 @@ func (s *TransactionService) validate(ctx context.Context, t *model.Transaction)
 		if t.ToAccountID == nil || *t.ToAccountID == t.AccountID {
 			return fmt.Errorf("%w: transfer needs a different toAccountId", ErrInvalid)
 		}
+		if t.CategoryID != nil {
+			return fmt.Errorf("%w: transfers have no category", ErrInvalid)
+		}
 	default:
 		return fmt.Errorf("%w: unknown type %q", ErrInvalid, t.Type)
+	}
+
+	// an income category on an expense would misclassify it in every report
+	if t.CategoryID != nil {
+		c, err := s.categories.GetByID(ctx, *t.CategoryID)
+		if err != nil {
+			return err
+		}
+		if c.Kind != t.Type {
+			return fmt.Errorf("%w: category %q is for %s", ErrInvalid, c.Name, c.Kind)
+		}
 	}
 
 	ids := []int64{t.AccountID}
@@ -95,8 +114,16 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 	if u.ToAccountID != nil {
 		t.ToAccountID = u.ToAccountID
 	}
+	if u.CategoryID != nil {
+		t.CategoryID = u.CategoryID
+	}
+	if u.ClearCategory {
+		t.CategoryID = nil
+	}
 	if t.Type != model.TransactionTransfer {
 		t.ToAccountID = nil // only transfers have a destination
+	} else {
+		t.CategoryID = nil // and only non-transfers have a category
 	}
 	if err := s.validate(ctx, &t); err != nil {
 		return t, err

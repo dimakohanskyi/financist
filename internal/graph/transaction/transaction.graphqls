@@ -8,6 +8,8 @@ type Transaction {
   id: ID!
   accountId: ID!
   toAccountId: ID
+  "Kind matches type; transfers have none"
+  categoryId: ID
   type: TransactionType!
   "Minor units (cents), always positive"
   amount: Int64!
@@ -19,6 +21,7 @@ input CreateTransactionInput {
   accountId: ID!
   "Only for transfers"
   toAccountId: ID
+  categoryId: ID
   type: TransactionType!
   amount: Int64!
   description: String = ""
@@ -29,6 +32,8 @@ input CreateTransactionInput {
 input UpdateTransactionInput {
   accountId: ID
   toAccountId: ID
+  "null clears it. Changing type to transfer clears it too"
+  categoryId: ID @goField(omittable: true)
   type: TransactionType
   amount: Int64
   description: String

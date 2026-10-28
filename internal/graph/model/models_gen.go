@@ -8,6 +8,8 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/99designs/gqlgen/graphql"
 )
 
 type Account struct {
@@ -22,6 +24,21 @@ type Account struct {
 	Balance int `json:"balance"`
 }
 
+type Category struct {
+	ID   string       `json:"id"`
+	Name string       `json:"name"`
+	Kind CategoryKind `json:"kind"`
+	// Lucide icon name
+	Icon *string `json:"icon,omitempty"`
+	// Hex like #2a78d6
+	Color     string `json:"color"`
+	SortOrder int32  `json:"sortOrder"`
+	// Seeded defaults can only be deleted once unused
+	IsDefault bool `json:"isDefault"`
+	// Subcategories are one level deep
+	ParentID *string `json:"parentId,omitempty"`
+}
+
 type CreateAccountInput struct {
 	Name        string      `json:"name"`
 	AccountType AccountType `json:"accountType"`
@@ -29,10 +46,21 @@ type CreateAccountInput struct {
 	Color       *string     `json:"color,omitempty"`
 }
 
+type CreateCategoryInput struct {
+	Name      string       `json:"name"`
+	Kind      CategoryKind `json:"kind"`
+	Icon      *string      `json:"icon,omitempty"`
+	Color     string       `json:"color"`
+	SortOrder *int32       `json:"sortOrder,omitempty"`
+	// Must be a top-level category of the same kind
+	ParentID *string `json:"parentId,omitempty"`
+}
+
 type CreateTransactionInput struct {
 	AccountID string `json:"accountId"`
 	// Only for transfers
 	ToAccountID *string         `json:"toAccountId,omitempty"`
+	CategoryID  *string         `json:"categoryId,omitempty"`
 	Type        TransactionType `json:"type"`
 	Amount      int             `json:"amount"`
 	Description *string         `json:"description,omitempty"`
@@ -46,10 +74,12 @@ type Query struct {
 }
 
 type Transaction struct {
-	ID          string          `json:"id"`
-	AccountID   string          `json:"accountId"`
-	ToAccountID *string         `json:"toAccountId,omitempty"`
-	Type        TransactionType `json:"type"`
+	ID          string  `json:"id"`
+	AccountID   string  `json:"accountId"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// Kind matches type; transfers have none
+	CategoryID *string         `json:"categoryId,omitempty"`
+	Type       TransactionType `json:"type"`
 	// Minor units (cents), always positive
 	Amount      int       `json:"amount"`
 	Description string    `json:"description"`
@@ -71,14 +101,26 @@ type UpdateAccountInput struct {
 	IsArchived *bool   `json:"isArchived,omitempty"`
 }
 
+type UpdateCategoryInput struct {
+	Name *string `json:"name,omitempty"`
+	// Empty string clears it
+	Icon      *string `json:"icon,omitempty"`
+	Color     *string `json:"color,omitempty"`
+	SortOrder *int32  `json:"sortOrder,omitempty"`
+	// null makes it top-level
+	ParentID graphql.Omittable[*string] `json:"parentId,omitempty"`
+}
+
 // Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
 type UpdateTransactionInput struct {
-	AccountID   *string          `json:"accountId,omitempty"`
-	ToAccountID *string          `json:"toAccountId,omitempty"`
-	Type        *TransactionType `json:"type,omitempty"`
-	Amount      *int             `json:"amount,omitempty"`
-	Description *string          `json:"description,omitempty"`
-	Date        *time.Time       `json:"date,omitempty"`
+	AccountID   *string `json:"accountId,omitempty"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// null clears it. Changing type to transfer clears it too
+	CategoryID  graphql.Omittable[*string] `json:"categoryId,omitempty"`
+	Type        *TransactionType           `json:"type,omitempty"`
+	Amount      *int                       `json:"amount,omitempty"`
+	Description *string                    `json:"description,omitempty"`
+	Date        *time.Time                 `json:"date,omitempty"`
 }
 
 type AccountType string
@@ -141,6 +183,61 @@ func (e *AccountType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccountType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CategoryKind string
+
+const (
+	CategoryKindIncome  CategoryKind = "income"
+	CategoryKindExpense CategoryKind = "expense"
+)
+
+var AllCategoryKind = []CategoryKind{
+	CategoryKindIncome,
+	CategoryKindExpense,
+}
+
+func (e CategoryKind) IsValid() bool {
+	switch e {
+	case CategoryKindIncome, CategoryKindExpense:
+		return true
+	}
+	return false
+}
+
+func (e CategoryKind) String() string {
+	return string(e)
+}
+
+func (e *CategoryKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CategoryKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CategoryKind", str)
+	}
+	return nil
+}
+
+func (e CategoryKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CategoryKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CategoryKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

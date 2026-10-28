@@ -25,12 +25,11 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.Cr
 		Amount:    int64(input.Amount),
 		Date:      input.Date,
 	}
-	if input.ToAccountID != nil {
-		to, err := parseID(*input.ToAccountID)
-		if err != nil {
-			return nil, err
-		}
-		t.ToAccountID = &to
+	if t.ToAccountID, err = parseOptionalID(input.ToAccountID); err != nil {
+		return nil, err
+	}
+	if t.CategoryID, err = parseOptionalID(input.CategoryID); err != nil {
+		return nil, err
 	}
 	if input.Description != nil {
 		t.Description = *input.Description
@@ -55,12 +54,14 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 		}
 		u.AccountID = &v
 	}
-	if input.ToAccountID != nil {
-		v, err := parseID(*input.ToAccountID)
-		if err != nil {
+	if u.ToAccountID, err = parseOptionalID(input.ToAccountID); err != nil {
+		return nil, err
+	}
+	if categoryID, set := input.CategoryID.ValueOK(); set {
+		if u.CategoryID, err = parseOptionalID(categoryID); err != nil {
 			return nil, err
 		}
-		u.ToAccountID = &v
+		u.ClearCategory = categoryID == nil
 	}
 	if input.Type != nil {
 		v := string(*input.Type)

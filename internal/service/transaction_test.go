@@ -14,6 +14,12 @@ func (f fakeAccounts) GetByID(context.Context, int64) (model.Account, error) {
 	return model.Account{IsArchived: f.archived}, nil
 }
 
+type fakeCategories struct{}
+
+func (fakeCategories) GetByID(_ context.Context, id int64) (model.Category, error) {
+	return model.Category{ID: id, Kind: model.CategoryExpense}, nil
+}
+
 type fakeTxs struct{}
 
 func (fakeTxs) Create(context.Context, *model.Transaction) error { return nil }
@@ -32,17 +38,17 @@ func TestCreate(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	if err := NewTransactionService(fakeTxs{}, fakeAccounts{}).Create(ctx, tx()); err != nil {
+	if err := NewTransactionService(fakeTxs{}, fakeAccounts{}, fakeCategories{}).Create(ctx, tx()); err != nil {
 		t.Fatalf("valid transaction rejected: %v", err)
 	}
-	err := NewTransactionService(fakeTxs{}, fakeAccounts{archived: true}).Create(ctx, tx())
+	err := NewTransactionService(fakeTxs{}, fakeAccounts{archived: true}, fakeCategories{}).Create(ctx, tx())
 	if !errors.Is(err, ErrInvalid) {
 		t.Fatalf("archived account accepted, err: %v", err)
 	}
 }
 
 func TestUpdate(t *testing.T) {
-	svc := NewTransactionService(fakeTxs{}, fakeAccounts{})
+	svc := NewTransactionService(fakeTxs{}, fakeAccounts{}, fakeCategories{})
 	ctx := context.Background()
 
 	amount := int64(250)

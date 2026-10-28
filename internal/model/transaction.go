@@ -12,6 +12,7 @@ type Transaction struct {
 	ID          int64
 	AccountID   int64
 	ToAccountID *int64 // only for transfers
+	CategoryID  *int64 // kind matches Type; never on transfers
 	Type        string
 	Amount      int64 // minor units (cents), always > 0
 	Description string
@@ -26,10 +27,12 @@ type TransactionFilter struct {
 
 // TransactionUpdate holds the fields to change; nil means "leave as is".
 type TransactionUpdate struct {
-	AccountID   *int64
-	ToAccountID *int64
-	Type        *string
-	Amount      *int64
-	Description *string
-	Date        *time.Time
+	AccountID     *int64
+	ToAccountID   *int64
+	CategoryID    *int64
+	ClearCategory bool
+	Type          *string
+	Amount        *int64
+	Description   *string
+	Date          *time.Time
 }

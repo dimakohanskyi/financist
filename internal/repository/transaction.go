@@ -14,6 +14,7 @@ type transactionRow struct {
 	ID          int64 `gorm:"primaryKey"`
 	AccountID   int64
 	ToAccountID *int64
+	CategoryID  *int64
 	Type        string
 	Amount      int64
 	Description string

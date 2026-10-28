@@ -21,17 +21,44 @@ func toAccount(a *domain.Account) *model.Account {
 func parseID(id string) (int64, error) { return strconv.ParseInt(id, 10, 64) }
 
 func toTransaction(t *domain.Transaction) *model.Transaction {
-	out := &model.Transaction{
+	return &model.Transaction{
 		ID:          strconv.FormatInt(t.ID, 10),
 		AccountID:   strconv.FormatInt(t.AccountID, 10),
+		ToAccountID: formatOptionalID(t.ToAccountID),
+		CategoryID:  formatOptionalID(t.CategoryID),
 		Type:        model.TransactionType(t.Type),
 		Amount:      int(t.Amount),
 		Description: t.Description,
 		Date:        t.Date,
 	}
-	if t.ToAccountID != nil {
-		to := strconv.FormatInt(*t.ToAccountID, 10)
-		out.ToAccountID = &to
+}
+
+// parseOptionalID parses a nullable ID; nil stays nil.
+func parseOptionalID(id *string) (*int64, error) {
+	if id == nil {
+		return nil, nil
 	}
-	return out
+	n, err := parseID(*id)
+	return &n, err
+}
+
+func formatOptionalID(id *int64) *string {
+	if id == nil {
+		return nil
+	}
+	s := strconv.FormatInt(*id, 10)
+	return &s
+}
+
+func toCategory(c *domain.Category) *model.Category {
+	return &model.Category{
+		ID:        strconv.FormatInt(c.ID, 10),
+		Name:      c.Name,
+		Kind:      model.CategoryKind(c.Kind),
+		Icon:      c.Icon,
+		Color:     c.Color,
+		SortOrder: int32(c.SortOrder),
+		IsDefault: c.IsDefault,
+		ParentID:  formatOptionalID(c.ParentID),
+	}
 }
