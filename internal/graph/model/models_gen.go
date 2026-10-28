@@ -63,14 +63,24 @@ type CreateTransactionInput struct {
 	CategoryID  *string         `json:"categoryId,omitempty"`
 	Type        TransactionType `json:"type"`
 	Amount      int             `json:"amount"`
-	Description *string         `json:"description,omitempty"`
-	Date        time.Time       `json:"date"`
+	// First letter is capitalized
+	Description *string   `json:"description,omitempty"`
+	Merchant    *string   `json:"merchant,omitempty"`
+	Notes       *string   `json:"notes,omitempty"`
+	Date        time.Time `json:"date"`
+	TagIds      []string  `json:"tagIds,omitempty"`
 }
 
 type Mutation struct {
 }
 
 type Query struct {
+}
+
+// A free-form label, e.g. a trip or project. Categories say what kind of spend it is
+type Tag struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type Transaction struct {
@@ -83,7 +93,10 @@ type Transaction struct {
 	// Minor units (cents), always positive
 	Amount      int       `json:"amount"`
 	Description string    `json:"description"`
+	Merchant    string    `json:"merchant"`
+	Notes       string    `json:"notes"`
 	Date        time.Time `json:"date"`
+	Tags        []*Tag    `json:"tags"`
 }
 
 type TransactionPage struct {
@@ -120,7 +133,11 @@ type UpdateTransactionInput struct {
 	Type        *TransactionType           `json:"type,omitempty"`
 	Amount      *int                       `json:"amount,omitempty"`
 	Description *string                    `json:"description,omitempty"`
+	Merchant    *string                    `json:"merchant,omitempty"`
+	Notes       *string                    `json:"notes,omitempty"`
 	Date        *time.Time                 `json:"date,omitempty"`
+	// Replaces the whole set; [] clears it
+	TagIds []string `json:"tagIds,omitempty"`
 }
 
 type AccountType string

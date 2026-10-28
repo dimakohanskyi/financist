@@ -14,7 +14,10 @@ type Transaction {
   "Minor units (cents), always positive"
   amount: Int64!
   description: String!
+  merchant: String!
+  notes: String!
   date: Time!
+  tags: [Tag!]!
 }
 
 input CreateTransactionInput {
@@ -24,8 +27,12 @@ input CreateTransactionInput {
   categoryId: ID
   type: TransactionType!
   amount: Int64!
+  "First letter is capitalized"
   description: String = ""
+  merchant: String = ""
+  notes: String = ""
   date: Time!
+  tagIds: [ID!] = []
 }
 
 "Omitted fields are left unchanged. Changing type away from transfer clears toAccountId"
@@ -37,7 +44,11 @@ input UpdateTransactionInput {
   type: TransactionType
   amount: Int64
   description: String
+  merchant: String
+  notes: String
   date: Time
+  "Replaces the whole set; [] clears it"
+  tagIds: [ID!]
 }
 
 extend type Mutation {

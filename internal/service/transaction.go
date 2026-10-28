@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/dimakohanskyi/financist/internal/model"
 )
@@ -37,6 +39,7 @@ func NewTransactionService(txs TransactionStore, accounts AccountGetter, categor
 }
 
 func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) error {
+	t.Description = capitalizeFirst(t.Description)
 	if err := s.validate(ctx, t); err != nil {
 		return err
 	}
@@ -106,7 +109,19 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 		t.Amount = *u.Amount
 	}
 	if u.Description != nil {
-		t.Description = *u.Description
+		t.Description = capitalizeFirst(*u.Description)
+	}
+	if u.Merchant != nil {
+		t.Merchant = *u.Merchant
+	}
+	if u.Notes != nil {
+		t.Notes = *u.Notes
+	}
+	if u.TagIDs != nil {
+		t.Tags = make([]model.Tag, len(*u.TagIDs))
+		for i, id := range *u.TagIDs {
+			t.Tags[i] = model.Tag{ID: id}
+		}
 	}
 	if u.Date != nil {
 		t.Date = *u.Date
@@ -151,4 +166,14 @@ func (s *TransactionService) List(ctx context.Context, f model.TransactionFilter
 
 func (s *TransactionService) Delete(ctx context.Context, id int64) error {
 	return s.txs.Delete(ctx, id)
+}
+
+// capitalizeFirst uppercases only the first letter: "iPhone 15" stays as is,
+// "продукти" becomes "Продукти".
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r, size := utf8.DecodeRuneInString(s)
+	return string(unicode.ToUpper(r)) + s[size:]
 }

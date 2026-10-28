@@ -53,6 +53,7 @@ func main() {
 		AccountRepo: accountRepo,
 		TxService:   service.NewTransactionService(repository.NewTransactionRepo(gormDB), accountRepo, categoryRepo),
 		CategorySvc: service.NewCategoryService(categoryRepo),
+		TagRepo:     repository.NewTagRepo(gormDB),
 	}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

@@ -34,6 +34,19 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.Cr
 	if input.Description != nil {
 		t.Description = *input.Description
 	}
+	if input.Merchant != nil {
+		t.Merchant = *input.Merchant
+	}
+	if input.Notes != nil {
+		t.Notes = *input.Notes
+	}
+	tagIDs, err := parseIDs(input.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range tagIDs {
+		t.Tags = append(t.Tags, domain.Tag{ID: id})
+	}
 	if err := r.TxService.Create(ctx, t); err != nil {
 		return nil, err
 	}
@@ -46,7 +59,14 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 	if err != nil {
 		return nil, err
 	}
-	u := domain.TransactionUpdate{Description: input.Description, Date: input.Date}
+	u := domain.TransactionUpdate{Description: input.Description, Merchant: input.Merchant, Notes: input.Notes, Date: input.Date}
+	if input.TagIds != nil {
+		ids, err := parseIDs(input.TagIds)
+		if err != nil {
+			return nil, err
+		}
+		u.TagIDs = &ids
+	}
 	if input.AccountID != nil {
 		v, err := parseID(*input.AccountID)
 		if err != nil {

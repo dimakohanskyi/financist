@@ -16,4 +16,5 @@ type Resolver struct {
 	AccountRepo *repository.AccountRepo
 	TxService   *service.TransactionService
 	CategorySvc *service.CategoryService
+	TagRepo     *repository.TagRepo
 }

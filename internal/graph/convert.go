@@ -21,7 +21,7 @@ func toAccount(a *domain.Account) *model.Account {
 func parseID(id string) (int64, error) { return strconv.ParseInt(id, 10, 64) }
 
 func toTransaction(t *domain.Transaction) *model.Transaction {
-	return &model.Transaction{
+	out := &model.Transaction{
 		ID:          strconv.FormatInt(t.ID, 10),
 		AccountID:   strconv.FormatInt(t.AccountID, 10),
 		ToAccountID: formatOptionalID(t.ToAccountID),
@@ -29,8 +29,15 @@ func toTransaction(t *domain.Transaction) *model.Transaction {
 		Type:        model.TransactionType(t.Type),
 		Amount:      int(t.Amount),
 		Description: t.Description,
+		Merchant:    t.Merchant,
+		Notes:       t.Notes,
 		Date:        t.Date,
+		Tags:        make([]*model.Tag, len(t.Tags)),
 	}
+	for i := range t.Tags {
+		out.Tags[i] = toTag(&t.Tags[i])
+	}
+	return out
 }
 
 // parseOptionalID parses a nullable ID; nil stays nil.
@@ -61,4 +68,20 @@ func toCategory(c *domain.Category) *model.Category {
 		IsDefault: c.IsDefault,
 		ParentID:  formatOptionalID(c.ParentID),
 	}
+}
+
+func toTag(t *domain.Tag) *model.Tag {
+	return &model.Tag{ID: strconv.FormatInt(t.ID, 10), Name: t.Name}
+}
+
+func parseIDs(ids []string) ([]int64, error) {
+	out := make([]int64, len(ids))
+	for i, id := range ids {
+		n, err := parseID(id)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = n
+	}
+	return out, nil
 }

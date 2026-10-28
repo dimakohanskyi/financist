@@ -16,7 +16,10 @@ type Transaction struct {
 	Type        string
 	Amount      int64 // minor units (cents), always > 0
 	Description string
+	Merchant    string
+	Notes       string
 	Date        time.Time
+	Tags        []Tag // only IDs matter when writing
 }
 
 type TransactionFilter struct {
@@ -34,5 +37,8 @@ type TransactionUpdate struct {
 	Type          *string
 	Amount        *int64
 	Description   *string
+	Merchant      *string
+	Notes         *string
 	Date          *time.Time
+	TagIDs        *[]int64 // replaces the whole set; empty clears it
 }
