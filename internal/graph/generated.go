@@ -61,30 +61,54 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		BulkCreateTransactions func(childComplexity int, inputs []*model.CreateTransactionInput) int
-		CreateAccount          func(childComplexity int, input model.CreateAccountInput) int
-		CreateCategory         func(childComplexity int, input model.CreateCategoryInput) int
-		CreateTag              func(childComplexity int, name string) int
-		CreateTransaction      func(childComplexity int, input model.CreateTransactionInput) int
-		DeleteAccount          func(childComplexity int, id string) int
-		DeleteCategory         func(childComplexity int, id string) int
-		DeleteTag              func(childComplexity int, id string) int
-		DeleteTransaction      func(childComplexity int, id string) int
-		UpdateAccount          func(childComplexity int, id string, input model.UpdateAccountInput) int
-		UpdateCategory         func(childComplexity int, id string, input model.UpdateCategoryInput) int
-		UpdateTransaction      func(childComplexity int, id string, input model.UpdateTransactionInput) int
+		BulkCreateTransactions     func(childComplexity int, inputs []*model.CreateTransactionInput) int
+		CreateAccount              func(childComplexity int, input model.CreateAccountInput) int
+		CreateCategory             func(childComplexity int, input model.CreateCategoryInput) int
+		CreateRecurringTransaction func(childComplexity int, input model.CreateRecurringTransactionInput) int
+		CreateTag                  func(childComplexity int, name string) int
+		CreateTransaction          func(childComplexity int, input model.CreateTransactionInput) int
+		DeleteAccount              func(childComplexity int, id string) int
+		DeleteCategory             func(childComplexity int, id string) int
+		DeleteRecurringTransaction func(childComplexity int, id string) int
+		DeleteTag                  func(childComplexity int, id string) int
+		DeleteTransaction          func(childComplexity int, id string) int
+		PostRecurringTransaction   func(childComplexity int, id string) int
+		UpdateAccount              func(childComplexity int, id string, input model.UpdateAccountInput) int
+		UpdateCategory             func(childComplexity int, id string, input model.UpdateCategoryInput) int
+		UpdateRecurringTransaction func(childComplexity int, id string, input model.UpdateRecurringTransactionInput) int
+		UpdateTransaction          func(childComplexity int, id string, input model.UpdateTransactionInput) int
 	}
 
 	Query struct {
-		Account          func(childComplexity int, id string) int
-		Accounts         func(childComplexity int, includeArchived *bool) int
-		Categories       func(childComplexity int, kind *model.CategoryKind) int
-		Category         func(childComplexity int, id string) int
-		Ping             func(childComplexity int) int
-		Tags             func(childComplexity int) int
-		Transaction      func(childComplexity int, id string) int
-		TransactionYears func(childComplexity int) int
-		Transactions     func(childComplexity int, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) int
+		Account               func(childComplexity int, id string) int
+		Accounts              func(childComplexity int, includeArchived *bool) int
+		Categories            func(childComplexity int, kind *model.CategoryKind) int
+		Category              func(childComplexity int, id string) int
+		Ping                  func(childComplexity int) int
+		RecurringTransactions func(childComplexity int) int
+		Tags                  func(childComplexity int) int
+		Transaction           func(childComplexity int, id string) int
+		TransactionYears      func(childComplexity int) int
+		Transactions          func(childComplexity int, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) int
+	}
+
+	RecurringTransaction struct {
+		AccountID      func(childComplexity int) int
+		Amount         func(childComplexity int) int
+		AnchorDate     func(childComplexity int) int
+		CategoryID     func(childComplexity int) int
+		DaysUntilDue   func(childComplexity int) int
+		Description    func(childComplexity int) int
+		Frequency      func(childComplexity int) int
+		ID             func(childComplexity int) int
+		IsActive       func(childComplexity int) int
+		IsDue          func(childComplexity int) int
+		LastPostedDate func(childComplexity int) int
+		Merchant       func(childComplexity int) int
+		NextDueDate    func(childComplexity int) int
+		Notes          func(childComplexity int) int
+		ToAccountID    func(childComplexity int) int
+		Type           func(childComplexity int) int
 	}
 
 	Tag struct {
@@ -134,6 +158,10 @@ type MutationResolver interface {
 	CreateCategory(ctx context.Context, input model.CreateCategoryInput) (*model.Category, error)
 	UpdateCategory(ctx context.Context, id string, input model.UpdateCategoryInput) (*model.Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
+	CreateRecurringTransaction(ctx context.Context, input model.CreateRecurringTransactionInput) (*model.RecurringTransaction, error)
+	UpdateRecurringTransaction(ctx context.Context, id string, input model.UpdateRecurringTransactionInput) (*model.RecurringTransaction, error)
+	DeleteRecurringTransaction(ctx context.Context, id string) (bool, error)
+	PostRecurringTransaction(ctx context.Context, id string) (*model.RecurringTransaction, error)
 	CreateTag(ctx context.Context, name string) (*model.Tag, error)
 	DeleteTag(ctx context.Context, id string) (bool, error)
 	CreateTransaction(ctx context.Context, input model.CreateTransactionInput) (*model.Transaction, error)
@@ -147,6 +175,7 @@ type QueryResolver interface {
 	Accounts(ctx context.Context, includeArchived *bool) ([]*model.Account, error)
 	Category(ctx context.Context, id string) (*model.Category, error)
 	Categories(ctx context.Context, kind *model.CategoryKind) ([]*model.Category, error)
+	RecurringTransactions(ctx context.Context) ([]*model.RecurringTransaction, error)
 	Tags(ctx context.Context) ([]*model.Tag, error)
 	Transaction(ctx context.Context, id string) (*model.Transaction, error)
 	Transactions(ctx context.Context, accountID *string, categoryID *string, tagID *string, typeArg *model.TransactionType, search *string, from *time.Time, to *time.Time, sort *model.TransactionSort, limit *int32, offset *int32) (*model.TransactionPage, error)
@@ -296,6 +325,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateCategory(childComplexity, args["input"].(model.CreateCategoryInput)), true
+	case "Mutation.createRecurringTransaction":
+		if e.ComplexityRoot.Mutation.CreateRecurringTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createRecurringTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateRecurringTransaction(childComplexity, args["input"].(model.CreateRecurringTransactionInput)), true
 	case "Mutation.createTag":
 		if e.ComplexityRoot.Mutation.CreateTag == nil {
 			break
@@ -340,6 +380,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteCategory(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteRecurringTransaction":
+		if e.ComplexityRoot.Mutation.DeleteRecurringTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteRecurringTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteRecurringTransaction(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteTag":
 		if e.ComplexityRoot.Mutation.DeleteTag == nil {
 			break
@@ -362,6 +413,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteTransaction(childComplexity, args["id"].(string)), true
+	case "Mutation.postRecurringTransaction":
+		if e.ComplexityRoot.Mutation.PostRecurringTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_postRecurringTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.PostRecurringTransaction(childComplexity, args["id"].(string)), true
 	case "Mutation.updateAccount":
 		if e.ComplexityRoot.Mutation.UpdateAccount == nil {
 			break
@@ -384,6 +446,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateCategory(childComplexity, args["id"].(string), args["input"].(model.UpdateCategoryInput)), true
+	case "Mutation.updateRecurringTransaction":
+		if e.ComplexityRoot.Mutation.UpdateRecurringTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRecurringTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateRecurringTransaction(childComplexity, args["id"].(string), args["input"].(model.UpdateRecurringTransactionInput)), true
 	case "Mutation.updateTransaction":
 		if e.ComplexityRoot.Mutation.UpdateTransaction == nil {
 			break
@@ -447,6 +520,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Ping(childComplexity), true
+	case "Query.recurringTransactions":
+		if e.ComplexityRoot.Query.RecurringTransactions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.RecurringTransactions(childComplexity), true
 	case "Query.tags":
 		if e.ComplexityRoot.Query.Tags == nil {
 			break
@@ -481,6 +560,103 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Transactions(childComplexity, args["accountId"].(*string), args["categoryId"].(*string), args["tagId"].(*string), args["type"].(*model.TransactionType), args["search"].(*string), args["from"].(*time.Time), args["to"].(*time.Time), args["sort"].(*model.TransactionSort), args["limit"].(*int32), args["offset"].(*int32)), true
+
+	case "RecurringTransaction.accountId":
+		if e.ComplexityRoot.RecurringTransaction.AccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.AccountID(childComplexity), true
+	case "RecurringTransaction.amount":
+		if e.ComplexityRoot.RecurringTransaction.Amount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Amount(childComplexity), true
+	case "RecurringTransaction.anchorDate":
+		if e.ComplexityRoot.RecurringTransaction.AnchorDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.AnchorDate(childComplexity), true
+	case "RecurringTransaction.categoryId":
+		if e.ComplexityRoot.RecurringTransaction.CategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.CategoryID(childComplexity), true
+	case "RecurringTransaction.daysUntilDue":
+		if e.ComplexityRoot.RecurringTransaction.DaysUntilDue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.DaysUntilDue(childComplexity), true
+	case "RecurringTransaction.description":
+		if e.ComplexityRoot.RecurringTransaction.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Description(childComplexity), true
+	case "RecurringTransaction.frequency":
+		if e.ComplexityRoot.RecurringTransaction.Frequency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Frequency(childComplexity), true
+	case "RecurringTransaction.id":
+		if e.ComplexityRoot.RecurringTransaction.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.ID(childComplexity), true
+	case "RecurringTransaction.isActive":
+		if e.ComplexityRoot.RecurringTransaction.IsActive == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.IsActive(childComplexity), true
+	case "RecurringTransaction.isDue":
+		if e.ComplexityRoot.RecurringTransaction.IsDue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.IsDue(childComplexity), true
+	case "RecurringTransaction.lastPostedDate":
+		if e.ComplexityRoot.RecurringTransaction.LastPostedDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.LastPostedDate(childComplexity), true
+	case "RecurringTransaction.merchant":
+		if e.ComplexityRoot.RecurringTransaction.Merchant == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Merchant(childComplexity), true
+	case "RecurringTransaction.nextDueDate":
+		if e.ComplexityRoot.RecurringTransaction.NextDueDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.NextDueDate(childComplexity), true
+	case "RecurringTransaction.notes":
+		if e.ComplexityRoot.RecurringTransaction.Notes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Notes(childComplexity), true
+	case "RecurringTransaction.toAccountId":
+		if e.ComplexityRoot.RecurringTransaction.ToAccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.ToAccountID(childComplexity), true
+	case "RecurringTransaction.type":
+		if e.ComplexityRoot.RecurringTransaction.Type == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecurringTransaction.Type(childComplexity), true
 
 	case "Tag.id":
 		if e.ComplexityRoot.Tag.ID == nil {
@@ -616,10 +792,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateAccountInput,
 		ec.unmarshalInputCreateCategoryInput,
+		ec.unmarshalInputCreateRecurringTransactionInput,
 		ec.unmarshalInputCreateTransactionInput,
 		ec.unmarshalInputTransactionSplitInput,
 		ec.unmarshalInputUpdateAccountInput,
 		ec.unmarshalInputUpdateCategoryInput,
+		ec.unmarshalInputUpdateRecurringTransactionInput,
 		ec.unmarshalInputUpdateTransactionInput,
 	)
 	first := true
@@ -695,7 +873,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema.graphqls" "account/account.graphqls" "category/category.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
+//go:embed "schema.graphqls" "account/account.graphqls" "category/category.graphqls" "recurring/recurring.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -710,6 +888,7 @@ var sources = []*ast.Source{
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 	{Name: "account/account.graphqls", Input: sourceData("account/account.graphqls"), BuiltIn: false},
 	{Name: "category/category.graphqls", Input: sourceData("category/category.graphqls"), BuiltIn: false},
+	{Name: "recurring/recurring.graphqls", Input: sourceData("recurring/recurring.graphqls"), BuiltIn: false},
 	{Name: "tag/tag.graphqls", Input: sourceData("tag/tag.graphqls"), BuiltIn: false},
 	{Name: "transaction/transaction.graphqls", Input: sourceData("transaction/transaction.graphqls"), BuiltIn: false},
 }
@@ -759,6 +938,44 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_parentId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+}
+
+func (ec *executionContext) childFields_RecurringTransaction(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_RecurringTransaction_id(ctx, field)
+	case "accountId":
+		return ec.fieldContext_RecurringTransaction_accountId(ctx, field)
+	case "toAccountId":
+		return ec.fieldContext_RecurringTransaction_toAccountId(ctx, field)
+	case "categoryId":
+		return ec.fieldContext_RecurringTransaction_categoryId(ctx, field)
+	case "type":
+		return ec.fieldContext_RecurringTransaction_type(ctx, field)
+	case "amount":
+		return ec.fieldContext_RecurringTransaction_amount(ctx, field)
+	case "description":
+		return ec.fieldContext_RecurringTransaction_description(ctx, field)
+	case "merchant":
+		return ec.fieldContext_RecurringTransaction_merchant(ctx, field)
+	case "notes":
+		return ec.fieldContext_RecurringTransaction_notes(ctx, field)
+	case "frequency":
+		return ec.fieldContext_RecurringTransaction_frequency(ctx, field)
+	case "anchorDate":
+		return ec.fieldContext_RecurringTransaction_anchorDate(ctx, field)
+	case "lastPostedDate":
+		return ec.fieldContext_RecurringTransaction_lastPostedDate(ctx, field)
+	case "isActive":
+		return ec.fieldContext_RecurringTransaction_isActive(ctx, field)
+	case "nextDueDate":
+		return ec.fieldContext_RecurringTransaction_nextDueDate(ctx, field)
+	case "isDue":
+		return ec.fieldContext_RecurringTransaction_isDue(ctx, field)
+	case "daysUntilDue":
+		return ec.fieldContext_RecurringTransaction_daysUntilDue(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RecurringTransaction", field.Name)
 }
 
 func (ec *executionContext) childFields_Tag(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -983,6 +1200,20 @@ func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createRecurringTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.CreateRecurringTransactionInput, error) {
+			return ec.unmarshalNCreateRecurringTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateRecurringTransactionInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createTag_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1039,6 +1270,20 @@ func (ec *executionContext) field_Mutation_deleteCategory_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteRecurringTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteTag_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1054,6 +1299,20 @@ func (ec *executionContext) field_Mutation_deleteTag_args(ctx context.Context, r
 }
 
 func (ec *executionContext) field_Mutation_deleteTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_postRecurringTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
@@ -1103,6 +1362,28 @@ func (ec *executionContext) field_Mutation_updateCategory_args(ctx context.Conte
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.UpdateCategoryInput, error) {
 			return ec.unmarshalNUpdateCategoryInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateCategoryInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRecurringTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateRecurringTransactionInput, error) {
+			return ec.unmarshalNUpdateRecurringTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateRecurringTransactionInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -1972,6 +2253,182 @@ func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createRecurringTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createRecurringTransaction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateRecurringTransaction(ctx, fc.Args["input"].(model.CreateRecurringTransactionInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.RecurringTransaction) graphql.Marshaler {
+			return ec.marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransaction(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createRecurringTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RecurringTransaction(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createRecurringTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateRecurringTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateRecurringTransaction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateRecurringTransaction(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateRecurringTransactionInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.RecurringTransaction) graphql.Marshaler {
+			return ec.marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransaction(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateRecurringTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RecurringTransaction(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateRecurringTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteRecurringTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteRecurringTransaction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteRecurringTransaction(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteRecurringTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteRecurringTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_postRecurringTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_postRecurringTransaction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().PostRecurringTransaction(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.RecurringTransaction) graphql.Marshaler {
+			return ec.marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransaction(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_postRecurringTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RecurringTransaction(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_postRecurringTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createTag(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2435,6 +2892,38 @@ func (ec *executionContext) fieldContext_Query_categories(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_recurringTransactions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_recurringTransactions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().RecurringTransactions(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.RecurringTransaction) graphql.Marshaler {
+			return ec.marshalNRecurringTransaction2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransactionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_recurringTransactions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RecurringTransaction(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_tags(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2652,6 +3141,374 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _RecurringTransaction_id(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_accountId(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_accountId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AccountID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_accountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_toAccountId(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_toAccountId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ToAccountID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_toAccountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_categoryId(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_categoryId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_categoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_type(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_type(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.TransactionType) graphql.Marshaler {
+			return ec.marshalNTransactionType2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type TransactionType does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_amount(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_amount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_description(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_merchant(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_merchant(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Merchant, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_merchant(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_notes(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_notes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Notes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_notes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_frequency(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_frequency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Frequency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.RecurringFrequency) graphql.Marshaler {
+			return ec.marshalNRecurringFrequency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_frequency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type RecurringFrequency does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_anchorDate(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_anchorDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AnchorDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_anchorDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_lastPostedDate(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_lastPostedDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastPostedDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_lastPostedDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_isActive(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_isActive(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsActive, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_isActive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_nextDueDate(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_nextDueDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NextDueDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_nextDueDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_isDue(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_isDue(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsDue, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_isDue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _RecurringTransaction_daysUntilDue(ctx context.Context, field graphql.CollectedField, obj *model.RecurringTransaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecurringTransaction_daysUntilDue(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DaysUntilDue, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecurringTransaction_daysUntilDue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecurringTransaction", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Tag_id(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
@@ -4320,6 +5177,109 @@ func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateRecurringTransactionInput(ctx context.Context, obj any) (model.CreateRecurringTransactionInput, error) {
+	var it model.CreateRecurringTransactionInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["description"]; !present {
+		asMap["description"] = ""
+	}
+	if _, present := asMap["merchant"]; !present {
+		asMap["merchant"] = ""
+	}
+	if _, present := asMap["notes"]; !present {
+		asMap["notes"] = ""
+	}
+
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "frequency", "anchorDate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountID = data
+		case "toAccountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("toAccountId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ToAccountID = data
+		case "categoryId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CategoryID = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNTransactionType2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "amount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			data, err := ec.unmarshalNInt642int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amount = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "merchant":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchant"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Merchant = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		case "frequency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frequency"))
+			data, err := ec.unmarshalNRecurringFrequency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frequency = data
+		case "anchorDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("anchorDate"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AnchorDate = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateTransactionInput(ctx context.Context, obj any) (model.CreateTransactionInput, error) {
 	var it model.CreateTransactionInput
 	if obj == nil {
@@ -4595,6 +5555,106 @@ func (ec *executionContext) unmarshalInputUpdateCategoryInput(ctx context.Contex
 				return it, err
 			}
 			it.ParentID = graphql.OmittableOf(data)
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateRecurringTransactionInput(ctx context.Context, obj any) (model.UpdateRecurringTransactionInput, error) {
+	var it model.UpdateRecurringTransactionInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "frequency", "anchorDate", "isActive"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountID = data
+		case "toAccountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("toAccountId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ToAccountID = data
+		case "categoryId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CategoryID = graphql.OmittableOf(data)
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOTransactionType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "amount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			data, err := ec.unmarshalOInt642ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amount = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "merchant":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchant"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Merchant = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		case "frequency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frequency"))
+			data, err := ec.unmarshalORecurringFrequency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frequency = data
+		case "anchorDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("anchorDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AnchorDate = data
+		case "isActive":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isActive"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsActive = data
 		}
 	}
 	return it, nil
@@ -4944,6 +6004,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createRecurringTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createRecurringTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateRecurringTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateRecurringTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteRecurringTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteRecurringTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postRecurringTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_postRecurringTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createTag":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createTag(ctx, field)
@@ -5137,6 +6225,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "recurringTransactions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_recurringTransactions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "tags":
 			field := field
 
@@ -5238,6 +6348,119 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			})
 			if out.Values[i] == graphql.RequiredNull {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var recurringTransactionImplementors = []string{"RecurringTransaction"}
+
+func (ec *executionContext) _RecurringTransaction(ctx context.Context, sel ast.SelectionSet, obj *model.RecurringTransaction) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recurringTransactionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecurringTransaction")
+		case "id":
+			out.Values[i] = ec._RecurringTransaction_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountId":
+			out.Values[i] = ec._RecurringTransaction_accountId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toAccountId":
+			out.Values[i] = ec._RecurringTransaction_toAccountId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "categoryId":
+			out.Values[i] = ec._RecurringTransaction_categoryId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._RecurringTransaction_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amount":
+			out.Values[i] = ec._RecurringTransaction_amount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._RecurringTransaction_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "merchant":
+			out.Values[i] = ec._RecurringTransaction_merchant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "notes":
+			out.Values[i] = ec._RecurringTransaction_notes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "frequency":
+			out.Values[i] = ec._RecurringTransaction_frequency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "anchorDate":
+			out.Values[i] = ec._RecurringTransaction_anchorDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastPostedDate":
+			out.Values[i] = ec._RecurringTransaction_lastPostedDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "isActive":
+			out.Values[i] = ec._RecurringTransaction_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextDueDate":
+			out.Values[i] = ec._RecurringTransaction_nextDueDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isDue":
+			out.Values[i] = ec._RecurringTransaction_isDue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "daysUntilDue":
+			out.Values[i] = ec._RecurringTransaction_daysUntilDue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -5982,6 +7205,11 @@ func (ec *executionContext) unmarshalNCreateCategoryInput2githubᚗcomᚋdimakoh
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateRecurringTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateRecurringTransactionInput(ctx context.Context, v any) (model.CreateRecurringTransactionInput, error) {
+	res, err := ec.unmarshalInputCreateRecurringTransactionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCreateTransactionInput(ctx context.Context, v any) (model.CreateTransactionInput, error) {
 	res, err := ec.unmarshalInputCreateTransactionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6091,6 +7319,42 @@ func (ec *executionContext) marshalNInt642int(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNRecurringFrequency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx context.Context, v any) (model.RecurringFrequency, error) {
+	var res model.RecurringFrequency
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRecurringFrequency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx context.Context, sel ast.SelectionSet, v model.RecurringFrequency) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNRecurringTransaction2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransactionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecurringTransaction) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransaction(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRecurringTransaction2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringTransaction(ctx context.Context, sel ast.SelectionSet, v *model.RecurringTransaction) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecurringTransaction(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
@@ -6235,6 +7499,11 @@ func (ec *executionContext) unmarshalNUpdateAccountInput2githubᚗcomᚋdimakoha
 
 func (ec *executionContext) unmarshalNUpdateCategoryInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateCategoryInput(ctx context.Context, v any) (model.UpdateCategoryInput, error) {
 	res, err := ec.unmarshalInputUpdateCategoryInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateRecurringTransactionInput2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐUpdateRecurringTransactionInput(ctx context.Context, v any) (model.UpdateRecurringTransactionInput, error) {
+	res, err := ec.unmarshalInputUpdateRecurringTransactionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -6562,6 +7831,22 @@ func (ec *executionContext) marshalOInt642ᚖint(ctx context.Context, sel ast.Se
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalORecurringFrequency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx context.Context, v any) (*model.RecurringFrequency, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.RecurringFrequency)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORecurringFrequency2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐRecurringFrequency(ctx context.Context, sel ast.SelectionSet, v *model.RecurringFrequency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

@@ -2,6 +2,7 @@ package graph
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
 	domain "github.com/dimakohanskyi/financist/internal/model"
@@ -147,4 +148,27 @@ func toNewTransaction(input *model.CreateTransactionInput) (*domain.Transaction,
 		return nil, err
 	}
 	return t, nil
+}
+
+func toRecurring(r *domain.Recurring) *model.RecurringTransaction {
+	today := domain.Day(time.Now())
+	next := r.NextDue()
+	return &model.RecurringTransaction{
+		ID:             strconv.FormatInt(r.ID, 10),
+		AccountID:      strconv.FormatInt(r.AccountID, 10),
+		ToAccountID:    formatOptionalID(r.ToAccountID),
+		CategoryID:     formatOptionalID(r.CategoryID),
+		Type:           model.TransactionType(r.Type),
+		Amount:         int(r.Amount),
+		Description:    r.Description,
+		Merchant:       r.Merchant,
+		Notes:          r.Notes,
+		Frequency:      model.RecurringFrequency(r.Frequency),
+		AnchorDate:     r.AnchorDate,
+		LastPostedDate: r.LastPostedDate,
+		IsActive:       r.IsActive,
+		NextDueDate:    next,
+		IsDue:          r.IsActive && !next.After(today),
+		DaysUntilDue:   int32(next.Sub(today).Hours() / 24),
+	}
 }

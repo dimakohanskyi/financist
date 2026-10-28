@@ -17,4 +17,5 @@ type Resolver struct {
 	TxService   *service.TransactionService
 	CategorySvc *service.CategoryService
 	TagRepo     *repository.TagRepo
+	Recurring   *service.RecurringService
 }

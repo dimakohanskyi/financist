@@ -56,6 +56,19 @@ type CreateCategoryInput struct {
 	ParentID *string `json:"parentId,omitempty"`
 }
 
+type CreateRecurringTransactionInput struct {
+	AccountID   string             `json:"accountId"`
+	ToAccountID *string            `json:"toAccountId,omitempty"`
+	CategoryID  *string            `json:"categoryId,omitempty"`
+	Type        TransactionType    `json:"type"`
+	Amount      int                `json:"amount"`
+	Description *string            `json:"description,omitempty"`
+	Merchant    *string            `json:"merchant,omitempty"`
+	Notes       *string            `json:"notes,omitempty"`
+	Frequency   RecurringFrequency `json:"frequency"`
+	AnchorDate  time.Time          `json:"anchorDate"`
+}
+
 type CreateTransactionInput struct {
 	AccountID string `json:"accountId"`
 	// Only for transfers
@@ -77,6 +90,30 @@ type Mutation struct {
 }
 
 type Query struct {
+}
+
+// A template for a transaction that repeats. Posting is manual, so missed periods never back-fill
+type RecurringTransaction struct {
+	ID          string             `json:"id"`
+	AccountID   string             `json:"accountId"`
+	ToAccountID *string            `json:"toAccountId,omitempty"`
+	CategoryID  *string            `json:"categoryId,omitempty"`
+	Type        TransactionType    `json:"type"`
+	Amount      int                `json:"amount"`
+	Description string             `json:"description"`
+	Merchant    string             `json:"merchant"`
+	Notes       string             `json:"notes"`
+	Frequency   RecurringFrequency `json:"frequency"`
+	// First due date
+	AnchorDate     time.Time  `json:"anchorDate"`
+	LastPostedDate *time.Time `json:"lastPostedDate,omitempty"`
+	// Paused templates keep their history
+	IsActive bool `json:"isActive"`
+	// anchorDate until the first post, then one period after the last post. Month ends clamp, Jan 31 -> Feb 28
+	NextDueDate time.Time `json:"nextDueDate"`
+	IsDue       bool      `json:"isDue"`
+	// Negative when overdue
+	DaysUntilDue int32 `json:"daysUntilDue"`
 }
 
 // A free-form label, e.g. a trip or project. Categories say what kind of spend it is
@@ -142,6 +179,21 @@ type UpdateCategoryInput struct {
 	SortOrder *int32  `json:"sortOrder,omitempty"`
 	// null makes it top-level
 	ParentID graphql.Omittable[*string] `json:"parentId,omitempty"`
+}
+
+type UpdateRecurringTransactionInput struct {
+	AccountID   *string `json:"accountId,omitempty"`
+	ToAccountID *string `json:"toAccountId,omitempty"`
+	// null clears it
+	CategoryID  graphql.Omittable[*string] `json:"categoryId,omitempty"`
+	Type        *TransactionType           `json:"type,omitempty"`
+	Amount      *int                       `json:"amount,omitempty"`
+	Description *string                    `json:"description,omitempty"`
+	Merchant    *string                    `json:"merchant,omitempty"`
+	Notes       *string                    `json:"notes,omitempty"`
+	Frequency   *RecurringFrequency        `json:"frequency,omitempty"`
+	AnchorDate  *time.Time                 `json:"anchorDate,omitempty"`
+	IsActive    *bool                      `json:"isActive,omitempty"`
 }
 
 // Omitted fields are left unchanged. Changing type away from transfer clears toAccountId
@@ -336,6 +388,63 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RecurringFrequency string
+
+const (
+	RecurringFrequencyWeekly  RecurringFrequency = "weekly"
+	RecurringFrequencyMonthly RecurringFrequency = "monthly"
+	RecurringFrequencyYearly  RecurringFrequency = "yearly"
+)
+
+var AllRecurringFrequency = []RecurringFrequency{
+	RecurringFrequencyWeekly,
+	RecurringFrequencyMonthly,
+	RecurringFrequencyYearly,
+}
+
+func (e RecurringFrequency) IsValid() bool {
+	switch e {
+	case RecurringFrequencyWeekly, RecurringFrequencyMonthly, RecurringFrequencyYearly:
+		return true
+	}
+	return false
+}
+
+func (e RecurringFrequency) String() string {
+	return string(e)
+}
+
+func (e *RecurringFrequency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RecurringFrequency(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RecurringFrequency", str)
+	}
+	return nil
+}
+
+func (e RecurringFrequency) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RecurringFrequency) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RecurringFrequency) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -1,0 +1,69 @@
+enum RecurringFrequency {
+  weekly
+  monthly
+  yearly
+}
+
+"A template for a transaction that repeats. Posting is manual, so missed periods never back-fill"
+type RecurringTransaction {
+  id: ID!
+  accountId: ID!
+  toAccountId: ID
+  categoryId: ID
+  type: TransactionType!
+  amount: Int64!
+  description: String!
+  merchant: String!
+  notes: String!
+  frequency: RecurringFrequency!
+  "First due date"
+  anchorDate: Time!
+  lastPostedDate: Time
+  "Paused templates keep their history"
+  isActive: Boolean!
+  "anchorDate until the first post, then one period after the last post. Month ends clamp, Jan 31 -> Feb 28"
+  nextDueDate: Time!
+  isDue: Boolean!
+  "Negative when overdue"
+  daysUntilDue: Int!
+}
+
+extend type Query {
+  recurringTransactions: [RecurringTransaction!]!
+}
+
+input CreateRecurringTransactionInput {
+  accountId: ID!
+  toAccountId: ID
+  categoryId: ID
+  type: TransactionType!
+  amount: Int64!
+  description: String = ""
+  merchant: String = ""
+  notes: String = ""
+  frequency: RecurringFrequency!
+  anchorDate: Time!
+}
+
+input UpdateRecurringTransactionInput {
+  accountId: ID
+  toAccountId: ID
+  "null clears it"
+  categoryId: ID @goField(omittable: true)
+  type: TransactionType
+  amount: Int64
+  description: String
+  merchant: String
+  notes: String
+  frequency: RecurringFrequency
+  anchorDate: Time
+  isActive: Boolean
+}
+
+extend type Mutation {
+  createRecurringTransaction(input: CreateRecurringTransactionInput!): RecurringTransaction!
+  updateRecurringTransaction(id: ID!, input: UpdateRecurringTransactionInput!): RecurringTransaction!
+  deleteRecurringTransaction(id: ID!): Boolean!
+  "Creates a transaction dated today from the template and moves its schedule forward"
+  postRecurringTransaction(id: ID!): RecurringTransaction!
+}
