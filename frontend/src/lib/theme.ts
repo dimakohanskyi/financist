@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "aurum:theme";
+const STORAGE_KEY = "financist:theme";
 // Kept in sync by hand with index.css's --surface-0 light/dark values —
 // same pair the anti-FOUC inline script in index.html uses.
 const SURFACE_0 = { light: "#f9f9f7", dark: "#0d0d0d" };

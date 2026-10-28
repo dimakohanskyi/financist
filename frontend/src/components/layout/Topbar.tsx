@@ -22,7 +22,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
       >
         <Menu size={20} />
       </button>
-      <h1 className="text-lg font-semibold text-text-primary">{activeItem ? t(activeItem.labelKey) : "Aurum"}</h1>
+      <h1 className="text-lg font-semibold text-text-primary">{activeItem ? t(activeItem.labelKey) : "Financist"}</h1>
     </header>
   );
 }

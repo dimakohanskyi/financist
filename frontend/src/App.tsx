@@ -21,7 +21,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { TransactionsPage } from "@/pages/TransactionsPage";
 
 export default function App() {
-  const [collapsed, setCollapsed] = useLocalStorageState("aurum:sidebar-collapsed", false);
+  const [collapsed, setCollapsed] = useLocalStorageState("financist:sidebar-collapsed", false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Primary currency is server-persisted, unlike language — sync the

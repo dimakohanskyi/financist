@@ -109,7 +109,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobil
         ) : (
           <div className="flex items-center gap-2 px-4 py-4">
             <Logo size={24} />
-            <span className="text-lg font-semibold tracking-tight text-text-primary">Aurum</span>
+            <span className="text-lg font-semibold tracking-tight text-text-primary">Financist</span>
           </div>
         )}
         <NavList collapsed={collapsed} />
@@ -136,7 +136,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobil
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-surface-1 shadow-xl">
             <div className="flex items-center justify-between gap-2 px-4 py-4">
               <span className="flex items-center gap-2 text-lg font-semibold tracking-tight text-text-primary">
-                <Logo size={24} /> Aurum
+                <Logo size={24} /> Financist
               </span>
               <button
                 type="button"
