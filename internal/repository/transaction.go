@@ -22,10 +22,22 @@ type transactionRow struct {
 	Merchant    string
 	Notes       string
 	Date        time.Time
-	Tags        []tagRow `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID"`
+	Tags        []tagRow   `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID"`
+	Splits      []splitRow `gorm:"foreignKey:TransactionID"`
 }
 
 func (transactionRow) TableName() string { return "transactions" }
+
+// splitRow is the GORM mapping of the transaction_splits table.
+type splitRow struct {
+	ID            int64 `gorm:"primaryKey"`
+	TransactionID int64
+	CategoryID    *int64
+	Amount        int64
+	Note          string
+}
+
+func (splitRow) TableName() string { return "transaction_splits" }
 
 func toTransactionRow(t *model.Transaction) transactionRow {
 	return transactionRow{
@@ -56,9 +68,13 @@ func (r transactionRow) toModel() model.Transaction {
 		Notes:       r.Notes,
 		Date:        r.Date,
 		Tags:        make([]model.Tag, len(r.Tags)),
+		Splits:      make([]model.TransactionSplit, len(r.Splits)),
 	}
 	for i, tag := range r.Tags {
 		t.Tags[i] = model.Tag(tag)
+	}
+	for i, sp := range r.Splits {
+		t.Splits[i] = model.TransactionSplit{ID: sp.ID, CategoryID: sp.CategoryID, Amount: sp.Amount, Note: sp.Note}
 	}
 	return t
 }
@@ -73,14 +89,38 @@ func (r *TransactionRepo) Create(ctx context.Context, t *model.Transaction) erro
 	})
 }
 
-// create inserts the transaction with its tags using tx.
+// create inserts the transaction with its tags and splits using tx.
 func create(tx *gorm.DB, t *model.Transaction) error {
 	row := toTransactionRow(t)
 	if err := tx.Omit(clause.Associations).Create(&row).Error; err != nil {
 		return err
 	}
 	t.ID = row.ID
-	return saveTags(tx, t)
+	return saveLinks(tx, t)
+}
+
+// saveLinks replaces the transaction's tags and splits.
+func saveLinks(tx *gorm.DB, t *model.Transaction) error {
+	if err := saveTags(tx, t); err != nil {
+		return err
+	}
+	if err := tx.Where("transaction_id = ?", t.ID).Delete(&splitRow{}).Error; err != nil {
+		return err
+	}
+	if len(t.Splits) == 0 {
+		return nil
+	}
+	rows := make([]splitRow, len(t.Splits))
+	for i, sp := range t.Splits {
+		rows[i] = splitRow{TransactionID: t.ID, CategoryID: sp.CategoryID, Amount: sp.Amount, Note: sp.Note}
+	}
+	if err := tx.Create(&rows).Error; err != nil {
+		return err
+	}
+	for i := range rows {
+		t.Splits[i].ID = rows[i].ID
+	}
+	return nil
 }
 
 // saveTags replaces the transaction's tag links.
@@ -100,7 +140,7 @@ func saveTags(tx *gorm.DB, t *model.Transaction) error {
 
 func (r *TransactionRepo) GetByID(ctx context.Context, id int64) (model.Transaction, error) {
 	var row transactionRow
-	err := r.db.WithContext(ctx).Preload("Tags").First(&row, id).Error
+	err := withLinks(r.db.WithContext(ctx)).First(&row, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = model.ErrNotFound
 	}
@@ -118,7 +158,7 @@ func (r *TransactionRepo) List(ctx context.Context, f model.TransactionFilter) (
 		return nil, 0, err
 	}
 	var rows []transactionRow
-	if err := q.Preload("Tags").Order("date DESC, id DESC").Limit(f.Limit).Offset(f.Offset).Find(&rows).Error; err != nil {
+	if err := withLinks(q).Order("date DESC, id DESC").Limit(f.Limit).Offset(f.Offset).Find(&rows).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]model.Transaction, len(rows))
@@ -128,14 +168,18 @@ func (r *TransactionRepo) List(ctx context.Context, f model.TransactionFilter) (
 	return out, total, nil
 }
 
-// Update overwrites every column and the tag set of an existing transaction.
+func withLinks(q *gorm.DB) *gorm.DB {
+	return q.Preload("Tags").Preload("Splits", func(db *gorm.DB) *gorm.DB { return db.Order("id") })
+}
+
+// Update overwrites every column, tag and split of an existing transaction.
 func (r *TransactionRepo) Update(ctx context.Context, t *model.Transaction) error {
 	row := toTransactionRow(t)
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&transactionRow{}).Where("id = ?", t.ID).Select("*").Omit("id", "Tags").Updates(&row).Error; err != nil {
+		if err := tx.Model(&transactionRow{}).Where("id = ?", t.ID).Select("*").Omit("id", "Tags", "Splits").Updates(&row).Error; err != nil {
 			return err
 		}
-		return saveTags(tx, t)
+		return saveLinks(tx, t)
 	})
 }
 

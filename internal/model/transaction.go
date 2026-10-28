@@ -20,6 +20,15 @@ type Transaction struct {
 	Notes       string
 	Date        time.Time
 	Tags        []Tag // only IDs matter when writing
+	Splits      []TransactionSplit
+}
+
+// TransactionSplit is one category's share of a split transaction.
+type TransactionSplit struct {
+	ID         int64
+	CategoryID *int64 // nil once its category is deleted
+	Amount     int64  // minor units (cents), > 0
+	Note       string
 }
 
 type TransactionFilter struct {
@@ -41,4 +50,5 @@ type TransactionUpdate struct {
 	Notes         *string
 	Date          *time.Time
 	TagIDs        *[]int64 // replaces the whole set; empty clears it
+	Splits        *[]TransactionSplit
 }

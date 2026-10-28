@@ -33,9 +33,18 @@ func toTransaction(t *domain.Transaction) *model.Transaction {
 		Notes:       t.Notes,
 		Date:        t.Date,
 		Tags:        make([]*model.Tag, len(t.Tags)),
+		Splits:      make([]*model.TransactionSplit, len(t.Splits)),
 	}
 	for i := range t.Tags {
 		out.Tags[i] = toTag(&t.Tags[i])
+	}
+	for i, sp := range t.Splits {
+		out.Splits[i] = &model.TransactionSplit{
+			ID:         strconv.FormatInt(sp.ID, 10),
+			CategoryID: formatOptionalID(sp.CategoryID),
+			Amount:     int(sp.Amount),
+			Note:       sp.Note,
+		}
 	}
 	return out
 }
@@ -82,6 +91,21 @@ func parseIDs(ids []string) ([]int64, error) {
 			return nil, err
 		}
 		out[i] = n
+	}
+	return out, nil
+}
+
+func parseSplits(in []*model.TransactionSplitInput) ([]domain.TransactionSplit, error) {
+	out := make([]domain.TransactionSplit, len(in))
+	for i, sp := range in {
+		id, err := parseID(sp.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = domain.TransactionSplit{CategoryID: &id, Amount: int64(sp.Amount)}
+		if sp.Note != nil {
+			out[i].Note = *sp.Note
+		}
 	}
 	return out, nil
 }

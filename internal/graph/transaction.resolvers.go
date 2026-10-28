@@ -47,6 +47,9 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, input model.Cr
 	for _, id := range tagIDs {
 		t.Tags = append(t.Tags, domain.Tag{ID: id})
 	}
+	if t.Splits, err = parseSplits(input.Splits); err != nil {
+		return nil, err
+	}
 	if err := r.TxService.Create(ctx, t); err != nil {
 		return nil, err
 	}
@@ -66,6 +69,13 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 			return nil, err
 		}
 		u.TagIDs = &ids
+	}
+	if input.Splits != nil {
+		splits, err := parseSplits(input.Splits)
+		if err != nil {
+			return nil, err
+		}
+		u.Splits = &splits
 	}
 	if input.AccountID != nil {
 		v, err := parseID(*input.AccountID)

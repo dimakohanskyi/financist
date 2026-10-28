@@ -69,6 +69,8 @@ type CreateTransactionInput struct {
 	Notes       *string   `json:"notes,omitempty"`
 	Date        time.Time `json:"date"`
 	TagIds      []string  `json:"tagIds,omitempty"`
+	// Instead of categoryId
+	Splits []*TransactionSplitInput `json:"splits,omitempty"`
 }
 
 type Mutation struct {
@@ -87,7 +89,7 @@ type Transaction struct {
 	ID          string  `json:"id"`
 	AccountID   string  `json:"accountId"`
 	ToAccountID *string `json:"toAccountId,omitempty"`
-	// Kind matches type; transfers have none
+	// Kind matches type; transfers and split transactions have none
 	CategoryID *string         `json:"categoryId,omitempty"`
 	Type       TransactionType `json:"type"`
 	// Minor units (cents), always positive
@@ -97,12 +99,30 @@ type Transaction struct {
 	Notes       string    `json:"notes"`
 	Date        time.Time `json:"date"`
 	Tags        []*Tag    `json:"tags"`
+	// Empty unless the amount is divided across categories
+	Splits []*TransactionSplit `json:"splits"`
 }
 
 type TransactionPage struct {
 	Items []*Transaction `json:"items"`
 	// Number of matches across all pages
 	Total int32 `json:"total"`
+}
+
+// One category's share of a split transaction
+type TransactionSplit struct {
+	ID string `json:"id"`
+	// null once its category is deleted
+	CategoryID *string `json:"categoryId,omitempty"`
+	Amount     int     `json:"amount"`
+	Note       string  `json:"note"`
+}
+
+// Splits divide the amount across one parent category and its subcategories. Need 2+ parts that add up to the amount
+type TransactionSplitInput struct {
+	CategoryID string  `json:"categoryId"`
+	Amount     int     `json:"amount"`
+	Note       *string `json:"note,omitempty"`
 }
 
 type UpdateAccountInput struct {
@@ -138,6 +158,8 @@ type UpdateTransactionInput struct {
 	Date        *time.Time                 `json:"date,omitempty"`
 	// Replaces the whole set; [] clears it
 	TagIds []string `json:"tagIds,omitempty"`
+	// Replaces the whole set; [] clears it. Setting categoryId alone drops splits and vice versa
+	Splits []*TransactionSplitInput `json:"splits,omitempty"`
 }
 
 type AccountType string

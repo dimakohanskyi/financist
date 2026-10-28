@@ -99,6 +99,7 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Merchant    func(childComplexity int) int
 		Notes       func(childComplexity int) int
+		Splits      func(childComplexity int) int
 		Tags        func(childComplexity int) int
 		ToAccountID func(childComplexity int) int
 		Type        func(childComplexity int) int
@@ -107,6 +108,13 @@ type ComplexityRoot struct {
 	TransactionPage struct {
 		Items func(childComplexity int) int
 		Total func(childComplexity int) int
+	}
+
+	TransactionSplit struct {
+		Amount     func(childComplexity int) int
+		CategoryID func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Note       func(childComplexity int) int
 	}
 }
 
@@ -514,6 +522,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Transaction.Notes(childComplexity), true
+	case "Transaction.splits":
+		if e.ComplexityRoot.Transaction.Splits == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Transaction.Splits(childComplexity), true
 	case "Transaction.tags":
 		if e.ComplexityRoot.Transaction.Tags == nil {
 			break
@@ -546,6 +560,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TransactionPage.Total(childComplexity), true
 
+	case "TransactionSplit.amount":
+		if e.ComplexityRoot.TransactionSplit.Amount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TransactionSplit.Amount(childComplexity), true
+	case "TransactionSplit.categoryId":
+		if e.ComplexityRoot.TransactionSplit.CategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TransactionSplit.CategoryID(childComplexity), true
+	case "TransactionSplit.id":
+		if e.ComplexityRoot.TransactionSplit.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TransactionSplit.ID(childComplexity), true
+	case "TransactionSplit.note":
+		if e.ComplexityRoot.TransactionSplit.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TransactionSplit.Note(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -557,6 +596,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateAccountInput,
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateTransactionInput,
+		ec.unmarshalInputTransactionSplitInput,
 		ec.unmarshalInputUpdateAccountInput,
 		ec.unmarshalInputUpdateCategoryInput,
 		ec.unmarshalInputUpdateTransactionInput,
@@ -734,6 +774,8 @@ func (ec *executionContext) childFields_Transaction(ctx context.Context, field g
 		return ec.fieldContext_Transaction_date(ctx, field)
 	case "tags":
 		return ec.fieldContext_Transaction_tags(ctx, field)
+	case "splits":
+		return ec.fieldContext_Transaction_splits(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
 }
@@ -746,6 +788,20 @@ func (ec *executionContext) childFields_TransactionPage(ctx context.Context, fie
 		return ec.fieldContext_TransactionPage_total(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TransactionPage", field.Name)
+}
+
+func (ec *executionContext) childFields_TransactionSplit(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_TransactionSplit_id(ctx, field)
+	case "categoryId":
+		return ec.fieldContext_TransactionSplit_categoryId(ctx, field)
+	case "amount":
+		return ec.fieldContext_TransactionSplit_amount(ctx, field)
+	case "note":
+		return ec.fieldContext_TransactionSplit_note(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TransactionSplit", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2748,6 +2804,38 @@ func (ec *executionContext) fieldContext_Transaction_tags(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Transaction_splits(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Transaction_splits(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Splits, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TransactionSplit) graphql.Marshaler {
+			return ec.marshalNTransactionSplit2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Transaction_splits(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TransactionSplit(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TransactionPage_items(ctx context.Context, field graphql.CollectedField, obj *model.TransactionPage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2801,6 +2889,98 @@ func (ec *executionContext) _TransactionPage_total(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_TransactionPage_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TransactionPage", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TransactionSplit_id(ctx context.Context, field graphql.CollectedField, obj *model.TransactionSplit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TransactionSplit_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TransactionSplit_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TransactionSplit", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _TransactionSplit_categoryId(ctx context.Context, field graphql.CollectedField, obj *model.TransactionSplit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TransactionSplit_categoryId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TransactionSplit_categoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TransactionSplit", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _TransactionSplit_amount(ctx context.Context, field graphql.CollectedField, obj *model.TransactionSplit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TransactionSplit_amount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt642int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TransactionSplit_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TransactionSplit", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _TransactionSplit_note(ctx context.Context, field graphql.CollectedField, obj *model.TransactionSplit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TransactionSplit_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TransactionSplit_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TransactionSplit", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -4005,8 +4185,11 @@ func (ec *executionContext) unmarshalInputCreateTransactionInput(ctx context.Con
 	if _, present := asMap["tagIds"]; !present {
 		asMap["tagIds"] = []any{}
 	}
+	if _, present := asMap["splits"]; !present {
+		asMap["splits"] = []any{}
+	}
 
-	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds"}
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds", "splits"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4083,6 +4266,61 @@ func (ec *executionContext) unmarshalInputCreateTransactionInput(ctx context.Con
 				return it, err
 			}
 			it.TagIds = data
+		case "splits":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splits"))
+			data, err := ec.unmarshalOTransactionSplitInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Splits = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTransactionSplitInput(ctx context.Context, obj any) (model.TransactionSplitInput, error) {
+	var it model.TransactionSplitInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["note"]; !present {
+		asMap["note"] = ""
+	}
+
+	fieldsInOrder := [...]string{"categoryId", "amount", "note"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "categoryId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CategoryID = data
+		case "amount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			data, err := ec.unmarshalNInt642int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amount = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
 		}
 	}
 	return it, nil
@@ -4215,7 +4453,7 @@ func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds"}
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds", "splits"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4292,6 +4530,13 @@ func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Con
 				return it, err
 			}
 			it.TagIds = data
+		case "splits":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splits"))
+			data, err := ec.unmarshalOTransactionSplitInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Splits = data
 		}
 	}
 	return it, nil
@@ -4938,6 +5183,11 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "splits":
+			out.Values[i] = ec._Transaction_splits(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4978,6 +5228,59 @@ func (ec *executionContext) _TransactionPage(ctx context.Context, sel ast.Select
 			}
 		case "total":
 			out.Values[i] = ec._TransactionPage_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var transactionSplitImplementors = []string{"TransactionSplit"}
+
+func (ec *executionContext) _TransactionSplit(ctx context.Context, sel ast.SelectionSet, obj *model.TransactionSplit) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, transactionSplitImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TransactionSplit")
+		case "id":
+			out.Values[i] = ec._TransactionSplit_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "categoryId":
+			out.Values[i] = ec._TransactionSplit_categoryId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "amount":
+			out.Values[i] = ec._TransactionSplit_amount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._TransactionSplit_note(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -5649,6 +5952,37 @@ func (ec *executionContext) marshalNTransactionPage2ᚖgithubᚗcomᚋdimakohans
 	return ec._TransactionPage(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTransactionSplit2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TransactionSplit) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTransactionSplit2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplit(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTransactionSplit2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplit(ctx context.Context, sel ast.SelectionSet, v *model.TransactionSplit) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TransactionSplit(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTransactionSplitInput2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInput(ctx context.Context, v any) (*model.TransactionSplitInput, error) {
+	res, err := ec.unmarshalInputTransactionSplitInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNTransactionType2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx context.Context, v any) (model.TransactionType, error) {
 	var res model.TransactionType
 	err := res.UnmarshalGQL(v)
@@ -6036,6 +6370,23 @@ func (ec *executionContext) marshalOTransaction2ᚖgithubᚗcomᚋdimakohanskyi�
 		return graphql.Null
 	}
 	return ec._Transaction(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTransactionSplitInput2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInputᚄ(ctx context.Context, v any) ([]*model.TransactionSplitInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.TransactionSplitInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTransactionSplitInput2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionSplitInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOTransactionType2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐTransactionType(ctx context.Context, v any) (*model.TransactionType, error) {

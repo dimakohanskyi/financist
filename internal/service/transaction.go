@@ -66,15 +66,13 @@ func (s *TransactionService) validate(ctx context.Context, t *model.Transaction)
 		return fmt.Errorf("%w: unknown type %q", ErrInvalid, t.Type)
 	}
 
-	// an income category on an expense would misclassify it in every report
 	if t.CategoryID != nil {
-		c, err := s.categories.GetByID(ctx, *t.CategoryID)
-		if err != nil {
+		if _, err := s.categoryFor(ctx, *t.CategoryID, t.Type); err != nil {
 			return err
 		}
-		if c.Kind != t.Type {
-			return fmt.Errorf("%w: category %q is for %s", ErrInvalid, c.Name, c.Kind)
-		}
+	}
+	if err := s.validateSplits(ctx, t); err != nil {
+		return err
 	}
 
 	ids := []int64{t.AccountID}
@@ -89,6 +87,63 @@ func (s *TransactionService) validate(ctx context.Context, t *model.Transaction)
 		if acc.IsArchived {
 			return fmt.Errorf("%w: account %d is archived", ErrInvalid, id)
 		}
+	}
+	return nil
+}
+
+// categoryFor fetches the category and checks it fits the transaction type:
+// an income category on an expense would misclassify it in every report.
+func (s *TransactionService) categoryFor(ctx context.Context, id int64, txType string) (model.Category, error) {
+	c, err := s.categories.GetByID(ctx, id)
+	if err != nil {
+		return c, err
+	}
+	if c.Kind != txType {
+		return c, fmt.Errorf("%w: category %q is for %s", ErrInvalid, c.Name, c.Kind)
+	}
+	return c, nil
+}
+
+// validateSplits checks a split divides the whole amount across one parent
+// category and its direct subcategories, so it rolls up into one place.
+func (s *TransactionService) validateSplits(ctx context.Context, t *model.Transaction) error {
+	if len(t.Splits) == 0 {
+		return nil
+	}
+	if t.Type == model.TransactionTransfer {
+		return fmt.Errorf("%w: transfers can't be split", ErrInvalid)
+	}
+	if t.CategoryID != nil {
+		return fmt.Errorf("%w: a split transaction has no categoryId of its own", ErrInvalid)
+	}
+	if len(t.Splits) < 2 {
+		return fmt.Errorf("%w: a split needs at least 2 parts", ErrInvalid)
+	}
+	var sum int64
+	var top *int64
+	for _, sp := range t.Splits {
+		if sp.Amount <= 0 {
+			return fmt.Errorf("%w: split amounts must be positive", ErrInvalid)
+		}
+		sum += sp.Amount
+		if sp.CategoryID == nil {
+			continue // its category was deleted since; only the sum still matters
+		}
+		c, err := s.categoryFor(ctx, *sp.CategoryID, t.Type)
+		if err != nil {
+			return err
+		}
+		root := c.ID
+		if c.ParentID != nil {
+			root = *c.ParentID
+		}
+		if top != nil && *top != root {
+			return fmt.Errorf("%w: split categories must share one parent", ErrInvalid)
+		}
+		top = &root
+	}
+	if sum != t.Amount {
+		return fmt.Errorf("%w: splits add up to %d, not %d", ErrInvalid, sum, t.Amount)
 	}
 	return nil
 }
@@ -129,8 +184,18 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 	if u.ToAccountID != nil {
 		t.ToAccountID = u.ToAccountID
 	}
+	// a category and splits are alternatives: setting one drops the other
 	if u.CategoryID != nil {
 		t.CategoryID = u.CategoryID
+		if u.Splits == nil {
+			t.Splits = nil
+		}
+	}
+	if u.Splits != nil {
+		t.Splits = *u.Splits
+		if len(t.Splits) > 0 && u.CategoryID == nil {
+			t.CategoryID = nil
+		}
 	}
 	if u.ClearCategory {
 		t.CategoryID = nil
@@ -138,7 +203,7 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 	if t.Type != model.TransactionTransfer {
 		t.ToAccountID = nil // only transfers have a destination
 	} else {
-		t.CategoryID = nil // and only non-transfers have a category
+		t.CategoryID, t.Splits = nil, nil // and only non-transfers have categories
 	}
 	if err := s.validate(ctx, &t); err != nil {
 		return t, err

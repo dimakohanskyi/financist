@@ -102,6 +102,7 @@ func (r *CategoryRepo) HasChildren(ctx context.Context, id int64) (bool, error) 
 // InUse reports whether any transaction or split line points at the category.
 func (r *CategoryRepo) InUse(ctx context.Context, id int64) (bool, error) {
 	var used bool
-	err := r.db.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM transactions WHERE category_id = ?)`, id).Scan(&used).Error
+	err := r.db.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM transactions WHERE category_id = ?)
+		OR EXISTS(SELECT 1 FROM transaction_splits WHERE category_id = ?)`, id, id).Scan(&used).Error
 	return used, err
 }
