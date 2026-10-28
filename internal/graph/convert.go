@@ -201,3 +201,16 @@ func yearMonth(year, month *int32) (int, int) {
 	}
 	return y, m
 }
+
+func toGoal(g *domain.Goal) *model.Goal {
+	return &model.Goal{
+		ID:            strconv.FormatInt(g.ID, 10),
+		Name:          g.Name,
+		TargetAmount:  int(g.TargetAmount),
+		TargetDate:    g.TargetDate,
+		CurrentAmount: int(g.CurrentAmount),
+		Remaining:     int(g.TargetAmount - g.CurrentAmount),
+		Percent:       percent(g.CurrentAmount, g.TargetAmount),
+		IsReached:     g.CurrentAmount >= g.TargetAmount,
+	}
+}

@@ -22,6 +22,7 @@ type Resolver struct {
 	TagRepo     *repository.TagRepo
 	Recurring   *service.RecurringService
 	BudgetSvc   *service.BudgetService
+	GoalRepo    *repository.GoalRepo
 }
 
 // category loads a category for a nested field. ponytail: one query per

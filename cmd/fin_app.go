@@ -58,6 +58,7 @@ func main() {
 		TagRepo:     repository.NewTagRepo(gormDB),
 		Recurring:   service.NewRecurringService(repository.NewRecurringRepo(gormDB), txService),
 		BudgetSvc:   service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, txRepo),
+		GoalRepo:    repository.NewGoalRepo(gormDB),
 	}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

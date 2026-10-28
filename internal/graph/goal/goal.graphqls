@@ -1,0 +1,38 @@
+"A savings goal tracked by a log of contributions"
+type Goal {
+  id: ID!
+  name: String!
+  targetAmount: Int64!
+  targetDate: Time
+  "Sum of all contributions"
+  currentAmount: Int64!
+  remaining: Int64!
+  percent: Float!
+  isReached: Boolean!
+}
+
+extend type Query {
+  goals: [Goal!]!
+}
+
+input CreateGoalInput {
+  name: String!
+  targetAmount: Int64!
+  targetDate: Time
+}
+
+input UpdateGoalInput {
+  name: String
+  targetAmount: Int64
+  "null clears it"
+  targetDate: Time @goField(omittable: true)
+}
+
+extend type Mutation {
+  createGoal(input: CreateGoalInput!): Goal!
+  updateGoal(id: ID!, input: UpdateGoalInput!): Goal!
+  "Removes its contributions too"
+  deleteGoal(id: ID!): Boolean!
+  "A negative amount is a withdrawal. Returns the goal with its new total"
+  addGoalContribution(goalId: ID!, amount: Int64!, date: Time!, note: String = ""): Goal!
+}

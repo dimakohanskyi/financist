@@ -74,6 +74,12 @@ type CreateCategoryInput struct {
 	ParentID *string `json:"parentId,omitempty"`
 }
 
+type CreateGoalInput struct {
+	Name         string     `json:"name"`
+	TargetAmount int        `json:"targetAmount"`
+	TargetDate   *time.Time `json:"targetDate,omitempty"`
+}
+
 type CreateRecurringTransactionInput struct {
 	AccountID   string             `json:"accountId"`
 	ToAccountID *string            `json:"toAccountId,omitempty"`
@@ -102,6 +108,19 @@ type CreateTransactionInput struct {
 	TagIds      []string  `json:"tagIds,omitempty"`
 	// Instead of categoryId
 	Splits []*TransactionSplitInput `json:"splits,omitempty"`
+}
+
+// A savings goal tracked by a log of contributions
+type Goal struct {
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	TargetAmount int        `json:"targetAmount"`
+	TargetDate   *time.Time `json:"targetDate,omitempty"`
+	// Sum of all contributions
+	CurrentAmount int     `json:"currentAmount"`
+	Remaining     int     `json:"remaining"`
+	Percent       float64 `json:"percent"`
+	IsReached     bool    `json:"isReached"`
 }
 
 type Mutation struct {
@@ -197,6 +216,13 @@ type UpdateCategoryInput struct {
 	SortOrder *int32  `json:"sortOrder,omitempty"`
 	// null makes it top-level
 	ParentID graphql.Omittable[*string] `json:"parentId,omitempty"`
+}
+
+type UpdateGoalInput struct {
+	Name         *string `json:"name,omitempty"`
+	TargetAmount *int    `json:"targetAmount,omitempty"`
+	// null clears it
+	TargetDate graphql.Omittable[*time.Time] `json:"targetDate,omitempty"`
 }
 
 type UpdateRecurringTransactionInput struct {
