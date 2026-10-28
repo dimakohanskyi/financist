@@ -24,6 +24,24 @@ type Account struct {
 	Balance int `json:"balance"`
 }
 
+// A monthly spending limit on an expense category, covering its subcategories too
+type Budget struct {
+	ID           string    `json:"id"`
+	CategoryID   string    `json:"categoryId"`
+	Category     *Category `json:"category"`
+	MonthlyLimit int       `json:"monthlyLimit"`
+}
+
+type BudgetStatus struct {
+	Budget *Budget `json:"budget"`
+	Spent  int     `json:"spent"`
+	// Negative when over budget
+	Remaining int `json:"remaining"`
+	// Can exceed 100
+	Percent      float64 `json:"percent"`
+	IsOverBudget bool    `json:"isOverBudget"`
+}
+
 type Category struct {
 	ID   string       `json:"id"`
 	Name string       `json:"name"`

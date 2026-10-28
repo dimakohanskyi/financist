@@ -172,3 +172,32 @@ func toRecurring(r *domain.Recurring) *model.RecurringTransaction {
 		DaysUntilDue:   int32(next.Sub(today).Hours() / 24),
 	}
 }
+
+func toBudget(b *domain.Budget) *model.Budget {
+	return &model.Budget{
+		ID:           strconv.FormatInt(b.ID, 10),
+		CategoryID:   strconv.FormatInt(b.CategoryID, 10),
+		MonthlyLimit: int(b.MonthlyLimit),
+	}
+}
+
+// percent is part of whole, 0 when whole is 0.
+func percent(part, whole int64) float64 {
+	if whole == 0 {
+		return 0
+	}
+	return float64(part) / float64(whole) * 100
+}
+
+// yearMonth fills in the current month for missing arguments.
+func yearMonth(year, month *int32) (int, int) {
+	now := time.Now().UTC()
+	y, m := now.Year(), int(now.Month())
+	if year != nil {
+		y = int(*year)
+	}
+	if month != nil {
+		m = int(*month)
+	}
+	return y, m
+}

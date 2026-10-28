@@ -217,6 +217,36 @@ func (r *TransactionRepo) YearRange(ctx context.Context) (from, to int, err erro
 	return from, to, err
 }
 
+// Contributions lists what each matching transaction put into each category:
+// a plain transaction's own category, or a split's lines. Uncategorized ones are skipped.
+func (r *TransactionRepo) Contributions(ctx context.Context, f model.ContributionFilter) ([]model.Contribution, error) {
+	filter := func(q *gorm.DB) *gorm.DB {
+		if f.Type != "" {
+			q = q.Where("t.type = ?", f.Type)
+		}
+		if f.From != nil {
+			q = q.Where("t.date >= ?", f.From.UTC())
+		}
+		if f.To != nil {
+			q = q.Where("t.date <= ?", f.To.UTC())
+		}
+		return q
+	}
+	// two queries, not a UNION, so date keeps its column type and scans as time
+	var plain, split []model.Contribution
+	err := filter(r.db.WithContext(ctx).Table("transactions t").
+		Select("t.id AS transaction_id, t.category_id, t.amount, t.date").
+		Where("t.category_id IS NOT NULL")).Scan(&plain).Error
+	if err != nil {
+		return nil, err
+	}
+	err = filter(r.db.WithContext(ctx).Table("transaction_splits s").
+		Joins("JOIN transactions t ON t.id = s.transaction_id").
+		Select("s.transaction_id, s.category_id, s.amount, t.date").
+		Where("s.category_id IS NOT NULL")).Scan(&split).Error
+	return append(plain, split...), err
+}
+
 func withLinks(q *gorm.DB) *gorm.DB {
 	return q.Preload("Tags").Preload("Splits", func(db *gorm.DB) *gorm.DB { return db.Order("id") })
 }

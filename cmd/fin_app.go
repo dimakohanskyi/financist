@@ -48,7 +48,8 @@ func main() {
 
 	accountRepo := repository.NewAccountRepo(gormDB)
 	categoryRepo := repository.NewCategoryRepo(gormDB)
-	txService := service.NewTransactionService(repository.NewTransactionRepo(gormDB), accountRepo, categoryRepo)
+	txRepo := repository.NewTransactionRepo(gormDB)
+	txService := service.NewTransactionService(txRepo, accountRepo, categoryRepo)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
 		AccountRepo: accountRepo,
@@ -56,6 +57,7 @@ func main() {
 		CategorySvc: service.NewCategoryService(categoryRepo),
 		TagRepo:     repository.NewTagRepo(gormDB),
 		Recurring:   service.NewRecurringService(repository.NewRecurringRepo(gormDB), txService),
+		BudgetSvc:   service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, txRepo),
 	}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
