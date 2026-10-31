@@ -72,6 +72,10 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 		v := int64(*input.Amount)
 		u.Amount = &v
 	}
+	if input.Currency != nil {
+		v := strings.ToUpper(strings.TrimSpace(*input.Currency))
+		u.Currency = &v
+	}
 	t, err := r.TxService.Update(ctx, n, u)
 	if err != nil {
 		return nil, err

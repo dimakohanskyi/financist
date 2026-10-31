@@ -1,0 +1,127 @@
+/* Hallmark · shape: Workbench · genre: modern-minimal · theme: Dusk (deal manual, user-picked) · job: try · draw: manual
+ * hero: none, app screen · nav: the existing sidebar · footer: none · imagery: none · signature: the month as a strip of nights · dusk: near-white and slate/periwinkle-apricot/glass
+ * axes: light+dark/grotesk-sans/cool · posture: committed · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E3 S4 R4 V4 · weakest: E, no photograph on an app screen so the depth comes from the lit panel edge */
+
+/*
+ * Dusk, scoped to the app root: every token the shared components read is
+ * redeclared under .dusk, so nothing outside the app root is touched. The
+ * --color-* names are repeated because Tailwind resolves them at :root, where
+ * a .dusk override of --surface-* would never be seen.
+ */
+:root {
+  --dusk-paper: oklch(98.5% 0.002 268);
+  --dusk-paper-2: oklch(100% 0 0);
+  --dusk-paper-3: oklch(95.5% 0.006 268);
+  --dusk-ink: oklch(21% 0.016 268);
+  --dusk-ink-2: oklch(38% 0.022 266);
+  --dusk-muted: oklch(47% 0.016 265);
+  --dusk-rule: oklch(91% 0.006 268);
+  --dusk-accent: oklch(52% 0.15 274);
+  --dusk-accent-deep: oklch(44% 0.13 274);
+  --dusk-accent-2: oklch(58% 0.13 55);
+  --dusk-focus: oklch(52% 0.15 274);
+  --dusk-lit: inset 0 1px 0 oklch(100% 0 0 / 0.8), inset 0 0 0 1px oklch(21% 0.016 268 / 0.06);
+  --dusk-lift: 0 24px 48px -28px oklch(21% 0.02 268 / 0.25);
+  --dusk-hairline: oklch(21% 0.016 268 / 0.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --dusk-paper: oklch(17.5% 0.014 268);
+    --dusk-paper-2: oklch(21% 0.016 268);
+    --dusk-paper-3: oklch(25% 0.017 268);
+    --dusk-ink: oklch(96% 0.006 75);
+    --dusk-ink-2: oklch(85% 0.010 262);
+    --dusk-muted: oklch(70% 0.016 262);
+    --dusk-rule: oklch(30% 0.016 266);
+    --dusk-accent: oklch(77% 0.10 274);
+    --dusk-accent-deep: oklch(44% 0.13 274);
+    --dusk-accent-2: oklch(83% 0.095 62);
+    --dusk-focus: oklch(80% 0.10 274);
+    --dusk-lit: inset 0 1px 0 oklch(100% 0 0 / 0.10), inset 0 0 0 1px oklch(100% 0 0 / 0.06);
+    --dusk-lift: 0 40px 80px -32px oklch(8% 0.02 268 / 0.7);
+    --dusk-hairline: oklch(100% 0 0 / 0.08);
+  }
+}
+
+:root[data-theme="dark"] {
+  --dusk-paper: oklch(17.5% 0.014 268);
+  --dusk-paper-2: oklch(21% 0.016 268);
+  --dusk-paper-3: oklch(25% 0.017 268);
+  --dusk-ink: oklch(96% 0.006 75);
+  --dusk-ink-2: oklch(85% 0.010 262);
+  --dusk-muted: oklch(70% 0.016 262);
+  --dusk-rule: oklch(30% 0.016 266);
+  --dusk-accent: oklch(77% 0.10 274);
+  --dusk-accent-deep: oklch(44% 0.13 274);
+  --dusk-accent-2: oklch(83% 0.095 62);
+  --dusk-focus: oklch(80% 0.10 274);
+  --dusk-lit: inset 0 1px 0 oklch(100% 0 0 / 0.10), inset 0 0 0 1px oklch(100% 0 0 / 0.06);
+  --dusk-lift: 0 40px 80px -32px oklch(8% 0.02 268 / 0.7);
+  --dusk-hairline: oklch(100% 0 0 / 0.08);
+}
+
+.dusk {
+  --font-display: "Wix Madefor Display", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Wix Madefor Text", ui-sans-serif, system-ui, sans-serif;
+
+  --surface-0: var(--dusk-paper);
+  --surface-1: var(--dusk-paper-2);
+  --surface-2: var(--dusk-paper-3);
+  --text-primary: var(--dusk-ink);
+  --text-secondary: var(--dusk-ink-2);
+  --text-muted: var(--dusk-muted);
+  --border: var(--dusk-hairline);
+  --gridline: var(--dusk-rule);
+  /* periwinkle is done and focused, apricot is open and owed */
+  --success: var(--dusk-accent);
+  --danger: var(--dusk-accent-2);
+  --series-1: var(--dusk-accent);
+  --series-2: var(--dusk-accent-2);
+  --series-6: var(--dusk-accent-deep);
+
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-gridline: var(--gridline);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-6: var(--series-6);
+
+  background: var(--dusk-paper);
+  color: var(--dusk-ink);
+  font-family: var(--font-body);
+}
+
+.dusk :focus-visible {
+  outline: 2px solid var(--dusk-focus);
+  outline-offset: 2px;
+}
+
+.dusk .font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.022em;
+}
+
+/* a lit panel on slate or bone, no glass over glass */
+.dusk .dusk-panel {
+  border: 0;
+  border-radius: 18px;
+  background: var(--dusk-paper-2);
+  color: var(--dusk-ink);
+  box-shadow: var(--dusk-lit), var(--dusk-lift);
+}
+
+/* days still to come in the strip of nights */
+.dusk .dusk-future {
+  background: repeating-linear-gradient(135deg, var(--dusk-muted) 0 1px, transparent 1px 4px);
+  opacity: 0.5;
+}

@@ -31,18 +31,32 @@ type TransactionStore interface {
 	YearRange(ctx context.Context) (from, to int, err error)
 }
 
+type RatesSource interface {
+	Rates(ctx context.Context) (model.Rates, error)
+}
+
 type TransactionService struct {
 	txs        TransactionStore
 	accounts   AccountGetter
 	categories CategoryGetter
+	rates      RatesSource // nil: only the account's own currency is accepted
+}
+
+// WithRates enables paying in a currency other than the account's.
+func (s *TransactionService) WithRates(r RatesSource) *TransactionService {
+	s.rates = r
+	return s
 }
 
 func NewTransactionService(txs TransactionStore, accounts AccountGetter, categories CategoryGetter) *TransactionService {
-	return &TransactionService{txs, accounts, categories}
+	return &TransactionService{txs: txs, accounts: accounts, categories: categories}
 }
 
 func (s *TransactionService) Create(ctx context.Context, t *model.Transaction) error {
 	t.Description = capitalizeFirst(t.Description)
+	if err := s.convert(ctx, t, t.OriginalCurrency); err != nil {
+		return err
+	}
 	if err := s.validate(ctx, t); err != nil {
 		return err
 	}
@@ -59,6 +73,9 @@ func (s *TransactionService) CreateMany(ctx context.Context, ts []*model.Transac
 	}
 	for i, t := range ts {
 		t.Description = capitalizeFirst(t.Description)
+		if err := s.convert(ctx, t, t.OriginalCurrency); err != nil {
+			return fmt.Errorf("transaction %d: %w", i, err)
+		}
 		if err := s.validate(ctx, t); err != nil {
 			return fmt.Errorf("transaction %d: %w", i, err)
 		}
@@ -82,6 +99,47 @@ func (s *TransactionService) Years(ctx context.Context) ([]int, error) {
 		years = append(years, y)
 	}
 	return years, nil
+}
+
+// convert handles a transaction entered in cur: Amount arrives in cur and
+// leaves in the account's currency (at the rate of the transaction's date),
+// with the entered value kept as OriginalAmount. Empty or the account's own
+// currency leaves Amount as is and clears any original.
+func (s *TransactionService) convert(ctx context.Context, t *model.Transaction, cur string) error {
+	t.OriginalAmount, t.OriginalCurrency = 0, ""
+	if cur == "" {
+		return nil
+	}
+	acc, err := s.accounts.GetByID(ctx, t.AccountID)
+	if err != nil {
+		return err
+	}
+	if cur == acc.Currency {
+		return nil
+	}
+	if t.Type == model.TransactionTransfer {
+		return fmt.Errorf("%w: transfers are in the account's currency", ErrInvalid)
+	}
+	if len(t.Splits) > 0 {
+		return fmt.Errorf("%w: split transactions are in the account's currency", ErrInvalid)
+	}
+	rates := model.Rates(nil)
+	if s.rates != nil {
+		if rates, err = s.rates.Rates(ctx); err != nil {
+			return err
+		}
+	}
+	for _, c := range []string{cur, acc.Currency} {
+		if c != model.BaseCurrency && len(rates[c]) == 0 {
+			return fmt.Errorf("%w: no exchange rate for %s, refresh rates in Settings", ErrInvalid, c)
+		}
+	}
+	if t.Amount <= 0 {
+		return nil // validate reports it
+	}
+	t.OriginalAmount, t.OriginalCurrency = t.Amount, cur
+	t.Amount = max(rates.Convert(t.Amount, cur, acc.Currency, t.Date), 1)
+	return nil
 }
 
 func (s *TransactionService) validate(ctx context.Context, t *model.Transaction) error {
@@ -198,9 +256,21 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 	if u.Type != nil {
 		t.Type = *u.Type
 	}
-	if u.Amount != nil {
-		t.Amount = *u.Amount
+	// the amount is read in the currency it was entered in
+	cur, entered := t.OriginalCurrency, t.Amount
+	if t.OriginalAmount > 0 {
+		entered = t.OriginalAmount
 	}
+	if u.Amount != nil || u.Currency != nil {
+		cur = ""
+		if u.Currency != nil {
+			cur = *u.Currency
+		}
+		if u.Amount != nil {
+			entered = *u.Amount
+		}
+	}
+	t.Amount = entered
 	if u.Description != nil {
 		t.Description = capitalizeFirst(*u.Description)
 	}
@@ -242,6 +312,9 @@ func (s *TransactionService) Update(ctx context.Context, id int64, u model.Trans
 		t.ToAccountID = nil // only transfers have a destination
 	} else {
 		t.CategoryID, t.Splits = nil, nil // and only non-transfers have categories
+	}
+	if err := s.convert(ctx, &t, cur); err != nil {
+		return t, err
 	}
 	if err := s.validate(ctx, &t); err != nil {
 		return t, err

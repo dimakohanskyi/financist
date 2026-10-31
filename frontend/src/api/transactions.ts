@@ -47,6 +47,8 @@ interface GqlTransaction {
   categoryId: string | null;
   type: TransactionType;
   amount: number;
+  originalAmount: number | null;
+  originalCurrency: string | null;
   description: string;
   merchant: string;
   notes: string;
@@ -56,7 +58,7 @@ interface GqlTransaction {
 }
 
 const TX_FIELDS =
-  "id accountId toAccountId categoryId type amount description merchant notes date tags { id name } splits { id categoryId amount note }";
+  "id accountId toAccountId categoryId type amount originalAmount originalCurrency description merchant notes date tags { id name } splits { id categoryId amount note }";
 
 // Accounts and categories ride along in the same request so each transaction can carry
 // its account and category objects, like the old REST payload did.
@@ -78,6 +80,8 @@ function mapper({ accounts, categories }: Lookups) {
     transfer_account_id: toIdOrNull(t.toAccountId),
     type: t.type,
     amount: fromCents(t.amount),
+    original_amount: t.originalAmount === null ? null : fromCents(t.originalAmount),
+    original_currency: t.originalCurrency,
     description: t.description,
     merchant: blankToNull(t.merchant),
     notes: blankToNull(t.notes),
@@ -181,6 +185,7 @@ function toCreateInput(input: TransactionInput) {
     categoryId: input.category_id,
     type: input.type,
     amount: toCents(input.amount),
+    currency: input.currency || null,
     description: input.description,
     merchant: input.merchant ?? "",
     notes: input.notes ?? "",
@@ -229,6 +234,7 @@ export async function updateTransaction(id: number, input: Partial<TransactionIn
         categoryId: input.category_id,
         type: input.type,
         amount: input.amount === undefined ? undefined : toCents(input.amount),
+        currency: input.currency || undefined,
         description: input.description,
         merchant: input.merchant === undefined ? undefined : (input.merchant ?? ""),
         notes: input.notes === undefined ? undefined : (input.notes ?? ""),

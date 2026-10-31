@@ -4,7 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter } from "react-router-dom";
 import App from "@/App";
 import "@/lib/theme";
+import "@fontsource/wix-madefor-text/400.css";
+import "@fontsource/wix-madefor-text/500.css";
+import "@fontsource/wix-madefor-display/500.css";
 import "@/index.css";
+import "@/dusk.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

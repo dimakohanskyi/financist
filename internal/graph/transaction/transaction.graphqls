@@ -13,6 +13,9 @@ type Transaction {
   type: TransactionType!
   "Minor units (cents), always positive"
   amount: Int64!
+  "Set when paid in another currency than the account's: what was entered, while amount is its value in the account's currency"
+  originalAmount: Int64
+  originalCurrency: String
   description: String!
   merchant: String!
   notes: String!
@@ -44,7 +47,10 @@ input CreateTransactionInput {
   toAccountId: ID
   categoryId: ID
   type: TransactionType!
+  "In currency, or the account's currency when that is omitted"
   amount: Int64!
+  "ISO code the amount was paid in; converted to the account's currency at the date's rate. Not for transfers or splits"
+  currency: String
   "First letter is capitalized"
   description: String = ""
   merchant: String = ""
@@ -63,6 +69,8 @@ input UpdateTransactionInput {
   categoryId: ID @goField(omittable: true)
   type: TransactionType
   amount: Int64
+  "Currency of amount; omitted means the account's"
+  currency: String
   description: String
   merchant: String
   notes: String

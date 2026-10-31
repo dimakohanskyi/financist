@@ -117,7 +117,7 @@ export function RoiProjectionCard({ investmentAmount, annualIncome, annualRoiPer
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t("roi.calculator.tableTitle")}</p>
+          <p className="text-xs font-semibold text-text-muted">{t("roi.calculator.tableTitle")}</p>
           <ul className="mt-2 divide-y divide-gridline">
             <li className="flex items-center gap-3 py-2 text-xs font-medium text-text-muted">
               <span className="flex-1" />

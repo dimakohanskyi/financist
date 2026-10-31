@@ -71,7 +71,12 @@ export function TransactionsTable({ items, onEdit, onDelete, onJumpToMonth }: Tr
                 }`}
               >
                 {isTransfer ? "" : isExpense ? "-" : "+"}
-                {formatCurrency(tx.amount)}
+                {formatCurrency(tx.amount, tx.account.currency)}
+                {tx.original_amount && tx.original_currency && (
+                  <span className="block text-xs font-normal text-text-muted">
+                    {formatCurrency(tx.original_amount, tx.original_currency)}
+                  </span>
+                )}
               </span>
 
               <span className="flex shrink-0 gap-1">

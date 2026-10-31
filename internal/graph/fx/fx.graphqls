@@ -1,0 +1,23 @@
+"Price of 1 USD in the quote currency"
+type FxRate {
+  quote: Currency!
+  rate: Float!
+  date: Time!
+}
+
+type FxStatus {
+  source: String!
+  "null until rates were fetched once"
+  updatedAt: Time
+  "Newest rate of each currency"
+  rates: [FxRate!]!
+}
+
+extend type Query {
+  fxStatus: FxStatus!
+}
+
+extend type Mutation {
+  "Fetches rates now and returns the new status; fails when a source can't be reached, keeping what was fetched"
+  refreshFxRates: FxStatus!
+}

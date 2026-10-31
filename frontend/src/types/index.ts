@@ -88,6 +88,10 @@ export interface Transaction {
   transfer_account_id: number | null;
   type: TransactionType;
   amount: string;
+  // Set when paid in a currency other than the account's; amount is then the
+  // converted value in the account's currency.
+  original_amount: string | null;
+  original_currency: string | null;
   description: string;
   merchant: string | null;
   notes: string | null;
@@ -111,6 +115,8 @@ export interface TransactionInput {
   transfer_account_id: number | null;
   type: TransactionType;
   amount: string;
+  // Currency of amount; omitted or empty means the account's.
+  currency?: string | null;
   description: string;
   merchant?: string | null;
   notes?: string | null;
@@ -191,6 +197,8 @@ export interface DashboardSummary {
   net: string;
   transferred_out: string;
   spending_by_category: CategoryBreakdownItem[];
+  /** Spent per day, day 1 first, one entry for every day of the month. */
+  daily_spending: number[];
 }
 
 export type AssetClass = "investments" | "real_estate" | "vehicles" | "precious_metals" | "other";
@@ -433,3 +441,8 @@ export interface AppSettings {
   app_version: string;
 }
 
+export interface FxStatus {
+  source: string;
+  updated_at: string | null;
+  rates: { quote: string; rate: number; date: string }[];
+}

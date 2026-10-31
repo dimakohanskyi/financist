@@ -2,6 +2,7 @@ package graph
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dimakohanskyi/financist/internal/graph/model"
@@ -35,6 +36,10 @@ func toTransaction(t *domain.Transaction) *model.Transaction {
 		Date:        t.Date,
 		Tags:        make([]*model.Tag, len(t.Tags)),
 		Splits:      make([]*model.TransactionSplit, len(t.Splits)),
+	}
+	if t.OriginalAmount > 0 {
+		amount := int(t.OriginalAmount)
+		out.OriginalAmount, out.OriginalCurrency = &amount, &t.OriginalCurrency
 	}
 	for i := range t.Tags {
 		out.Tags[i] = toTag(&t.Tags[i])
@@ -121,6 +126,9 @@ func toNewTransaction(input *model.CreateTransactionInput) (*domain.Transaction,
 		Type:      string(input.Type),
 		Amount:    int64(input.Amount),
 		Date:      input.Date,
+	}
+	if input.Currency != nil {
+		t.OriginalCurrency = strings.ToUpper(strings.TrimSpace(*input.Currency)) // the service turns it into a conversion
 	}
 	if t.ToAccountID, err = parseOptionalID(input.ToAccountID); err != nil {
 		return nil, err
@@ -303,4 +311,15 @@ func toNotices(ns []domain.Notice) []*model.Notice {
 		out[i] = &model.Notice{Key: n.Key, Level: n.Level, Params: n.Params}
 	}
 	return out
+}
+
+func toFxStatus(s domain.FxStatus, err error) (*model.FxStatus, error) {
+	if err != nil {
+		return nil, err
+	}
+	out := &model.FxStatus{Source: s.Source, UpdatedAt: s.UpdatedAt, Rates: make([]*model.FxRate, 0, len(s.Rates))}
+	for _, r := range s.Rates {
+		out.Rates = append(out.Rates, &model.FxRate{Quote: model.Currency(r.Quote), Rate: r.Rate, Date: r.Date})
+	}
+	return out, nil
 }

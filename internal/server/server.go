@@ -25,7 +25,9 @@ func New(gormDB *gorm.DB) *http.ServeMux {
 	txService := service.NewTransactionService(txRepo, accountRepo, categoryRepo)
 	assetRepo := repository.NewAssetRepo(gormDB)
 	settingsRepo := repository.NewSettingsRepo(gormDB)
-	budgetService := service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, txRepo)
+	fx := service.NewFxService(repository.NewFxRepo(gormDB), txRepo)
+	txService.WithRates(fx)
+	budgetService := service.NewBudgetService(repository.NewBudgetRepo(gormDB), categoryRepo, fx.Wrap(txRepo))
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
 		AccountRepo:  accountRepo,
@@ -37,7 +39,8 @@ func New(gormDB *gorm.DB) *http.ServeMux {
 		GoalRepo:     repository.NewGoalRepo(gormDB),
 		AssetRepo:    assetRepo,
 		SettingsRepo: settingsRepo,
-		Reports:      service.NewReportService(txRepo, accountRepo, categoryRepo, assetRepo, settingsRepo, budgetService),
+		Reports:      service.NewReportService(fx.Wrap(txRepo), accountRepo, categoryRepo, assetRepo, settingsRepo, budgetService),
+		Fx:           fx,
 	}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
@@ -61,7 +64,7 @@ func New(gormDB *gorm.DB) *http.ServeMux {
 	})
 
 	mux := http.NewServeMux()
-	mux.Handle("/query", srv)
+	mux.Handle("/query", convertToUSD(srv))
 
 	// Backups are plain HTTP: a file to download and upload, not a query.
 	backups := repository.NewBackupRepo(gormDB)
@@ -90,4 +93,14 @@ func New(gormDB *gorm.DB) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	return mux
+}
+
+// convertToUSD marks requests that send X-Convert-USD: 1 (the UI's switch).
+func convertToUSD(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Convert-USD") == "1" {
+			r = r.WithContext(service.WithUSD(r.Context()))
+		}
+		next.ServeHTTP(w, r)
+	})
 }

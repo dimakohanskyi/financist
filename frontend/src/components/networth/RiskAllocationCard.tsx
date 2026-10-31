@@ -23,7 +23,7 @@ export function RiskAllocationCard({ riskLevels, isLoading }: RiskAllocationCard
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {riskLevels.map((tier) => (
               <div key={tier.risk_level} className="rounded-lg border border-border p-3.5">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-text-muted">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: tier.color }} />
                   {t(`netWorth.riskLevel.${tier.risk_level}` as TranslationKey)}
                 </p>

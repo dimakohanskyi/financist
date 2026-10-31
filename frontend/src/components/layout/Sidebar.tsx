@@ -53,7 +53,7 @@ function NavList({ collapsed, onNavigate }: NavListProps) {
               cn(
                 "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary",
                 collapsed && "justify-center px-0",
-                isActive && "bg-surface-2 text-text-primary"
+                isActive && "bg-surface-2 text-text-primary [&_svg]:text-series-1"
               )
             }
           >
@@ -109,7 +109,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobil
         ) : (
           <div className="flex items-center gap-2 px-4 py-4">
             <Logo size={24} />
-            <span className="text-lg font-semibold tracking-tight text-text-primary">Financist</span>
+            <span className="font-display text-lg text-text-primary">Financist</span>
           </div>
         )}
         <NavList collapsed={collapsed} />

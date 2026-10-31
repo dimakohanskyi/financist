@@ -1,3 +1,5 @@
+import { isConvertToUsd } from "@/lib/convertToUsd";
+
 // Talks GraphQL to the Go backend, served in-process by Wails at /query.
 // The api/* modules map its shapes (camelCase, minor units, string IDs, RFC3339 times)
 // onto the frontend types (snake_case, decimal strings, numeric IDs, YYYY-MM-DD dates),
@@ -14,7 +16,7 @@ export class ApiError extends Error {
 export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const response = await fetch("/query", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(isConvertToUsd() ? { "X-Convert-USD": "1" } : {}) },
     body: JSON.stringify({ query, variables }),
   });
   if (!response.ok) {

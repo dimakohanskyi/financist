@@ -64,6 +64,12 @@ func (s *ReportService) Dashboard(ctx context.Context, year, month int, accountI
 	d.Income, d.Spent, d.TransferredOut = totals.income, totals.expense, totals.transferred
 
 	from, to := model.MonthRange(year, month)
+	d.DailySpending = make([]int64, to.Day())
+	for _, t := range ledger {
+		if day := t.Date.UTC(); t.Type == model.TransactionExpense && !day.Before(from) && !day.After(to) {
+			d.DailySpending[day.Day()-1] += t.Amount
+		}
+	}
 	items, err := s.rollup(ctx, model.ContributionFilter{Type: model.TransactionExpense, From: &from, To: &to, AccountID: accountID})
 	if err != nil {
 		return d, err

@@ -18,6 +18,9 @@ interface TransactionFormModalProps {
   transaction?: Transaction | null;
 }
 
+// Currencies with exchange rates (see FxService); only these can be converted.
+const PAY_CURRENCIES = ["USD", "EUR", "NOK", "PLN", "UAH"];
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -28,6 +31,7 @@ const EMPTY_FORM = {
   category_id: "",
   transfer_account_id: "",
   amount: "",
+  currency: "", // "" = the account's own
   description: "",
   merchant: "",
   notes: "",
@@ -98,7 +102,8 @@ export function TransactionFormModal({ open, onClose, transaction }: Transaction
             ? String(transaction.category_id)
             : "",
         transfer_account_id: transaction.transfer_account_id ? String(transaction.transfer_account_id) : "",
-        amount: transaction.amount,
+        amount: transaction.original_amount ?? transaction.amount,
+        currency: transaction.original_currency ?? "",
         description: transaction.description,
         merchant: transaction.merchant ?? "",
         notes: transaction.notes ?? "",
@@ -148,6 +153,7 @@ export function TransactionFormModal({ open, onClose, transaction }: Transaction
   }
 
   const isSplitEditingNow = form.type !== "transfer" && splitMode;
+  const accountCurrency = accounts?.find((a) => String(a.id) === form.account_id)?.currency ?? "";
   const splitAllocatedCents = splitRows.reduce((sum, row) => sum + toCents(row.amount), 0);
   const splitRemainingCents = toCents(form.amount) - splitAllocatedCents;
 
@@ -240,6 +246,7 @@ export function TransactionFormModal({ open, onClose, transaction }: Transaction
             : null,
       transfer_account_id: form.type === "transfer" ? Number(form.transfer_account_id) : null,
       amount: form.amount,
+      currency: form.type === "transfer" || splitMode ? null : form.currency,
       description: form.description,
       merchant: form.merchant || null,
       notes: form.notes || null,
@@ -287,15 +294,32 @@ export function TransactionFormModal({ open, onClose, transaction }: Transaction
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="amount">{t("transactions.form.amountLabel")}</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              required
-              value={form.amount}
-              onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={form.amount}
+                onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))}
+              />
+              {form.type !== "transfer" && !splitMode && (
+                <Select
+                  aria-label={t("transactions.form.currencyLabel")}
+                  className="w-24"
+                  value={form.currency}
+                  onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))}
+                >
+                  <option value="">{accountCurrency}</option>
+                  {PAY_CURRENCIES.filter((c) => c !== accountCurrency).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
           </div>
           <div>
             <Label htmlFor="date">{t("transactions.form.dateLabel")}</Label>

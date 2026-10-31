@@ -14,13 +14,18 @@ type Transaction struct {
 	ToAccountID *int64 // only for transfers
 	CategoryID  *int64 // kind matches Type; never on transfers
 	Type        string
-	Amount      int64 // minor units (cents), always > 0
-	Description string
-	Merchant    string
-	Notes       string
-	Date        time.Time
-	Tags        []Tag // only IDs matter when writing
-	Splits      []TransactionSplit
+	Amount      int64  // minor units (cents), always > 0
+	Currency    string // of the account; set by reads that join accounts
+	// Set when paid in another currency: Amount is then the converted value
+	// in the account's currency, fixed at entry.
+	OriginalAmount   int64 // minor units, 0 when paid in the account's currency
+	OriginalCurrency string
+	Description      string
+	Merchant         string
+	Notes            string
+	Date             time.Time
+	Tags             []Tag // only IDs matter when writing
+	Splits           []TransactionSplit
 }
 
 // TransactionSplit is one category's share of a split transaction.
@@ -57,6 +62,7 @@ type TransactionUpdate struct {
 	ClearCategory bool
 	Type          *string
 	Amount        *int64
+	Currency      *string // currency of Amount; nil means the account's
 	Description   *string
 	Merchant      *string
 	Notes         *string

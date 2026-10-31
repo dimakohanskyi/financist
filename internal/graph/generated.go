@@ -151,6 +151,7 @@ type ComplexityRoot struct {
 	}
 
 	Dashboard struct {
+		DailySpending      func(childComplexity int) int
 		Income             func(childComplexity int) int
 		Month              func(childComplexity int) int
 		Net                func(childComplexity int) int
@@ -163,6 +164,18 @@ type ComplexityRoot struct {
 	DatedAmount struct {
 		Amount func(childComplexity int) int
 		Date   func(childComplexity int) int
+	}
+
+	FxRate struct {
+		Date  func(childComplexity int) int
+		Quote func(childComplexity int) int
+		Rate  func(childComplexity int) int
+	}
+
+	FxStatus struct {
+		Rates     func(childComplexity int) int
+		Source    func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
 	}
 
 	Goal struct {
@@ -203,6 +216,7 @@ type ComplexityRoot struct {
 		DeleteTag                  func(childComplexity int, id string) int
 		DeleteTransaction          func(childComplexity int, id string) int
 		PostRecurringTransaction   func(childComplexity int, id string) int
+		RefreshFxRates             func(childComplexity int) int
 		UpdateAccount              func(childComplexity int, id string, input model.UpdateAccountInput) int
 		UpdateAsset                func(childComplexity int, id string, input model.UpdateAssetInput) int
 		UpdateBudget               func(childComplexity int, id string, monthlyLimit int) int
@@ -251,6 +265,7 @@ type ComplexityRoot struct {
 		CategoryRanking       func(childComplexity int, kind model.CategoryKind, from *time.Time, to *time.Time) int
 		CategorySpending      func(childComplexity int, categoryID string, from *time.Time, to *time.Time) int
 		Dashboard             func(childComplexity int, year *int32, month *int32, accountID *string) int
+		FxStatus              func(childComplexity int) int
 		Goals                 func(childComplexity int) int
 		NetWorth              func(childComplexity int, rangeArg model.NetWorthRange) int
 		Ping                  func(childComplexity int) int
@@ -303,18 +318,20 @@ type ComplexityRoot struct {
 	}
 
 	Transaction struct {
-		AccountID   func(childComplexity int) int
-		Amount      func(childComplexity int) int
-		CategoryID  func(childComplexity int) int
-		Date        func(childComplexity int) int
-		Description func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Merchant    func(childComplexity int) int
-		Notes       func(childComplexity int) int
-		Splits      func(childComplexity int) int
-		Tags        func(childComplexity int) int
-		ToAccountID func(childComplexity int) int
-		Type        func(childComplexity int) int
+		AccountID        func(childComplexity int) int
+		Amount           func(childComplexity int) int
+		CategoryID       func(childComplexity int) int
+		Date             func(childComplexity int) int
+		Description      func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Merchant         func(childComplexity int) int
+		Notes            func(childComplexity int) int
+		OriginalAmount   func(childComplexity int) int
+		OriginalCurrency func(childComplexity int) int
+		Splits           func(childComplexity int) int
+		Tags             func(childComplexity int) int
+		ToAccountID      func(childComplexity int) int
+		Type             func(childComplexity int) int
 	}
 
 	TransactionPage struct {
@@ -363,6 +380,7 @@ type MutationResolver interface {
 	CreateCategory(ctx context.Context, input model.CreateCategoryInput) (*model.Category, error)
 	UpdateCategory(ctx context.Context, id string, input model.UpdateCategoryInput) (*model.Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
+	RefreshFxRates(ctx context.Context) (*model.FxStatus, error)
 	CreateGoal(ctx context.Context, input model.CreateGoalInput) (*model.Goal, error)
 	UpdateGoal(ctx context.Context, id string, input model.UpdateGoalInput) (*model.Goal, error)
 	DeleteGoal(ctx context.Context, id string) (bool, error)
@@ -389,6 +407,7 @@ type QueryResolver interface {
 	BudgetStatus(ctx context.Context, year *int32, month *int32) ([]*model.BudgetStatus, error)
 	Category(ctx context.Context, id string) (*model.Category, error)
 	Categories(ctx context.Context, kind *model.CategoryKind) ([]*model.Category, error)
+	FxStatus(ctx context.Context) (*model.FxStatus, error)
 	Goals(ctx context.Context) ([]*model.Goal, error)
 	RecurringTransactions(ctx context.Context) ([]*model.RecurringTransaction, error)
 	Dashboard(ctx context.Context, year *int32, month *int32, accountID *string) (*model.Dashboard, error)
@@ -861,6 +880,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.CategorySpending.TransactionCount(childComplexity), true
 
+	case "Dashboard.dailySpending":
+		if e.ComplexityRoot.Dashboard.DailySpending == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dashboard.DailySpending(childComplexity), true
 	case "Dashboard.income":
 		if e.ComplexityRoot.Dashboard.Income == nil {
 			break
@@ -916,6 +941,44 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.DatedAmount.Date(childComplexity), true
+
+	case "FxRate.date":
+		if e.ComplexityRoot.FxRate.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxRate.Date(childComplexity), true
+	case "FxRate.quote":
+		if e.ComplexityRoot.FxRate.Quote == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxRate.Quote(childComplexity), true
+	case "FxRate.rate":
+		if e.ComplexityRoot.FxRate.Rate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxRate.Rate(childComplexity), true
+
+	case "FxStatus.rates":
+		if e.ComplexityRoot.FxStatus.Rates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxStatus.Rates(childComplexity), true
+	case "FxStatus.source":
+		if e.ComplexityRoot.FxStatus.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxStatus.Source(childComplexity), true
+	case "FxStatus.updatedAt":
+		if e.ComplexityRoot.FxStatus.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FxStatus.UpdatedAt(childComplexity), true
 
 	case "Goal.currentAmount":
 		if e.ComplexityRoot.Goal.CurrentAmount == nil {
@@ -1205,6 +1268,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.PostRecurringTransaction(childComplexity, args["id"].(string)), true
+	case "Mutation.refreshFxRates":
+		if e.ComplexityRoot.Mutation.RefreshFxRates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Mutation.RefreshFxRates(childComplexity), true
 	case "Mutation.updateAccount":
 		if e.ComplexityRoot.Mutation.UpdateAccount == nil {
 			break
@@ -1515,6 +1584,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Dashboard(childComplexity, args["year"].(*int32), args["month"].(*int32), args["accountId"].(*string)), true
+	case "Query.fxStatus":
+		if e.ComplexityRoot.Query.FxStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.FxStatus(childComplexity), true
 	case "Query.goals":
 		if e.ComplexityRoot.Query.Goals == nil {
 			break
@@ -1806,6 +1881,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Transaction.Notes(childComplexity), true
+	case "Transaction.originalAmount":
+		if e.ComplexityRoot.Transaction.OriginalAmount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Transaction.OriginalAmount(childComplexity), true
+	case "Transaction.originalCurrency":
+		if e.ComplexityRoot.Transaction.OriginalCurrency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Transaction.OriginalCurrency(childComplexity), true
 	case "Transaction.splits":
 		if e.ComplexityRoot.Transaction.Splits == nil {
 			break
@@ -1965,7 +2052,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema.graphqls" "account/account.graphqls" "asset/asset.graphqls" "budget/budget.graphqls" "category/category.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "report/report.graphqls" "settings/settings.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
+//go:embed "schema.graphqls" "account/account.graphqls" "asset/asset.graphqls" "budget/budget.graphqls" "category/category.graphqls" "fx/fx.graphqls" "goal/goal.graphqls" "recurring/recurring.graphqls" "report/report.graphqls" "settings/settings.graphqls" "tag/tag.graphqls" "transaction/transaction.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1982,6 +2069,7 @@ var sources = []*ast.Source{
 	{Name: "asset/asset.graphqls", Input: sourceData("asset/asset.graphqls"), BuiltIn: false},
 	{Name: "budget/budget.graphqls", Input: sourceData("budget/budget.graphqls"), BuiltIn: false},
 	{Name: "category/category.graphqls", Input: sourceData("category/category.graphqls"), BuiltIn: false},
+	{Name: "fx/fx.graphqls", Input: sourceData("fx/fx.graphqls"), BuiltIn: false},
 	{Name: "goal/goal.graphqls", Input: sourceData("goal/goal.graphqls"), BuiltIn: false},
 	{Name: "recurring/recurring.graphqls", Input: sourceData("recurring/recurring.graphqls"), BuiltIn: false},
 	{Name: "report/report.graphqls", Input: sourceData("report/report.graphqls"), BuiltIn: false},
@@ -2225,6 +2313,8 @@ func (ec *executionContext) childFields_Dashboard(ctx context.Context, field gra
 		return ec.fieldContext_Dashboard_transferredOut(ctx, field)
 	case "spendingByCategory":
 		return ec.fieldContext_Dashboard_spendingByCategory(ctx, field)
+	case "dailySpending":
+		return ec.fieldContext_Dashboard_dailySpending(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Dashboard", field.Name)
 }
@@ -2237,6 +2327,30 @@ func (ec *executionContext) childFields_DatedAmount(ctx context.Context, field g
 		return ec.fieldContext_DatedAmount_amount(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type DatedAmount", field.Name)
+}
+
+func (ec *executionContext) childFields_FxRate(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "quote":
+		return ec.fieldContext_FxRate_quote(ctx, field)
+	case "rate":
+		return ec.fieldContext_FxRate_rate(ctx, field)
+	case "date":
+		return ec.fieldContext_FxRate_date(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FxRate", field.Name)
+}
+
+func (ec *executionContext) childFields_FxStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "source":
+		return ec.fieldContext_FxStatus_source(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_FxStatus_updatedAt(ctx, field)
+	case "rates":
+		return ec.fieldContext_FxStatus_rates(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FxStatus", field.Name)
 }
 
 func (ec *executionContext) childFields_Goal(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2413,6 +2527,10 @@ func (ec *executionContext) childFields_Transaction(ctx context.Context, field g
 		return ec.fieldContext_Transaction_type(ctx, field)
 	case "amount":
 		return ec.fieldContext_Transaction_amount(ctx, field)
+	case "originalAmount":
+		return ec.fieldContext_Transaction_originalAmount(ctx, field)
+	case "originalCurrency":
+		return ec.fieldContext_Transaction_originalCurrency(ctx, field)
 	case "description":
 		return ec.fieldContext_Transaction_description(ctx, field)
 	case "merchant":
@@ -5341,6 +5459,29 @@ func (ec *executionContext) fieldContext_Dashboard_spendingByCategory(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Dashboard_dailySpending(ctx context.Context, field graphql.CollectedField, obj *model.Dashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dashboard_dailySpending(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DailySpending, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []int) graphql.Marshaler {
+			return ec.marshalNInt642ᚕintᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dashboard_dailySpending(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dashboard", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
 func (ec *executionContext) _DatedAmount_date(ctx context.Context, field graphql.CollectedField, obj *model.DatedAmount) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5385,6 +5526,153 @@ func (ec *executionContext) _DatedAmount_amount(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_DatedAmount_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("DatedAmount", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _FxRate_quote(ctx context.Context, field graphql.CollectedField, obj *model.FxRate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxRate_quote(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Quote, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FxRate_quote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FxRate", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _FxRate_rate(ctx context.Context, field graphql.CollectedField, obj *model.FxRate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxRate_rate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FxRate_rate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FxRate", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _FxRate_date(ctx context.Context, field graphql.CollectedField, obj *model.FxRate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxRate_date(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FxRate_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FxRate", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _FxStatus_source(ctx context.Context, field graphql.CollectedField, obj *model.FxStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxStatus_source(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FxStatus_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FxStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FxStatus_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.FxStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxStatus_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FxStatus_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FxStatus", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _FxStatus_rates(ctx context.Context, field graphql.CollectedField, obj *model.FxStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FxStatus_rates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rates, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FxRate) graphql.Marshaler {
+			return ec.marshalNFxRate2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxRateᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FxStatus_rates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FxStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FxRate(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Goal_id(ctx context.Context, field graphql.CollectedField, obj *model.Goal) (ret graphql.Marshaler) {
@@ -6208,6 +6496,38 @@ func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Con
 	if fc.Args, err = ec.field_Mutation_deleteCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_refreshFxRates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_refreshFxRates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Mutation().RefreshFxRates(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.FxStatus) graphql.Marshaler {
+			return ec.marshalNFxStatus2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxStatus(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_refreshFxRates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FxStatus(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -7577,6 +7897,38 @@ func (ec *executionContext) fieldContext_Query_categories(ctx context.Context, f
 	if fc.Args, err = ec.field_Query_categories_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_fxStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_fxStatus(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().FxStatus(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.FxStatus) graphql.Marshaler {
+			return ec.marshalNFxStatus2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxStatus(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_fxStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FxStatus(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -8969,6 +9321,52 @@ func (ec *executionContext) _Transaction_amount(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Transaction_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Transaction", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Transaction_originalAmount(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Transaction_originalAmount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OriginalAmount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt642ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Transaction_originalAmount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Transaction", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _Transaction_originalCurrency(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Transaction_originalCurrency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OriginalCurrency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Transaction_originalCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Transaction", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Transaction_description(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -10726,7 +11124,7 @@ func (ec *executionContext) unmarshalInputCreateTransactionInput(ctx context.Con
 		asMap["splits"] = []any{}
 	}
 
-	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds", "splits"}
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "currency", "description", "merchant", "notes", "date", "tagIds", "splits"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10768,6 +11166,13 @@ func (ec *executionContext) unmarshalInputCreateTransactionInput(ctx context.Con
 				return it, err
 			}
 			it.Amount = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -11271,7 +11676,7 @@ func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "description", "merchant", "notes", "date", "tagIds", "splits"}
+	fieldsInOrder := [...]string{"accountId", "toAccountId", "categoryId", "type", "amount", "currency", "description", "merchant", "notes", "date", "tagIds", "splits"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11313,6 +11718,13 @@ func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Con
 				return it, err
 			}
 			it.Amount = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -12331,6 +12743,11 @@ func (ec *executionContext) _Dashboard(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "dailySpending":
+			out.Values[i] = ec._Dashboard_dailySpending(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12371,6 +12788,102 @@ func (ec *executionContext) _DatedAmount(ctx context.Context, sel ast.SelectionS
 			}
 		case "amount":
 			out.Values[i] = ec._DatedAmount_amount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var fxRateImplementors = []string{"FxRate"}
+
+func (ec *executionContext) _FxRate(ctx context.Context, sel ast.SelectionSet, obj *model.FxRate) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fxRateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FxRate")
+		case "quote":
+			out.Values[i] = ec._FxRate_quote(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rate":
+			out.Values[i] = ec._FxRate_rate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "date":
+			out.Values[i] = ec._FxRate_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var fxStatusImplementors = []string{"FxStatus"}
+
+func (ec *executionContext) _FxStatus(ctx context.Context, sel ast.SelectionSet, obj *model.FxStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fxStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FxStatus")
+		case "source":
+			out.Values[i] = ec._FxStatus_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._FxStatus_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "rates":
+			out.Values[i] = ec._FxStatus_rates(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -12623,6 +13136,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteCategory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "refreshFxRates":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshFxRates(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -13128,6 +13648,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_categories(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "fxStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fxStatus(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -13795,6 +14337,16 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 		case "amount":
 			out.Values[i] = ec._Transaction_amount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "originalAmount":
+			out.Values[i] = ec._Transaction_originalAmount(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "originalCurrency":
+			out.Values[i] = ec._Transaction_originalCurrency(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		case "description":
@@ -14767,6 +15319,42 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNFxRate2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxRateᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FxRate) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFxRate2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxRate(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFxRate2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxRate(ctx context.Context, sel ast.SelectionSet, v *model.FxRate) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FxRate(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFxStatus2ᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐFxStatus(ctx context.Context, sel ast.SelectionSet, v *model.FxStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FxStatus(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGoal2ᚕᚖgithubᚗcomᚋdimakohanskyiᚋfinancistᚋinternalᚋgraphᚋmodelᚐGoalᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Goal) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -14868,6 +15456,35 @@ func (ec *executionContext) marshalNInt642int(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNInt642ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt642int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt642ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt642int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNMap2map(ctx context.Context, v any) (map[string]any, error) {

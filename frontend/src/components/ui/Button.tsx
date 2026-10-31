@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-text-primary text-surface-1 hover:opacity-90",
+  primary: "bg-series-1 text-surface-0 hover:opacity-90",
   secondary: "bg-surface-2 text-text-primary hover:bg-surface-2/70",
   ghost: "bg-transparent text-text-secondary hover:bg-surface-2",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-danger text-surface-0 hover:opacity-90",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
