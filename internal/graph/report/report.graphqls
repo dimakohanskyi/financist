@@ -20,6 +20,8 @@ type Dashboard {
   transferredOut: Int64!
   "Top 8 by amount, the rest folded into one slice"
   spendingByCategory: [CategoryAmount!]!
+  "Spending per day, day 1 first; one entry for every day of the month"
+  dailySpending: [Int64!]!
 }
 
 type CashFlowMonth {

@@ -8,3 +8,7 @@ build/bin/
 frontend/wailsjs/
 frontend/package.json.md5
 financist.db.bak
+personal/
+.agents/
+.claude/
+.hallmark/

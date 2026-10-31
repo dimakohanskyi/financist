@@ -193,7 +193,10 @@ type CreateTransactionInput struct {
 	ToAccountID *string         `json:"toAccountId,omitempty"`
 	CategoryID  *string         `json:"categoryId,omitempty"`
 	Type        TransactionType `json:"type"`
-	Amount      int             `json:"amount"`
+	// In currency, or the account's currency when that is omitted
+	Amount int `json:"amount"`
+	// ISO code the amount was paid in; converted to the account's currency at the date's rate. Not for transfers or splits
+	Currency *string `json:"currency,omitempty"`
 	// First letter is capitalized
 	Description *string   `json:"description,omitempty"`
 	Merchant    *string   `json:"merchant,omitempty"`
@@ -214,11 +217,28 @@ type Dashboard struct {
 	TransferredOut int   `json:"transferredOut"`
 	// Top 8 by amount, the rest folded into one slice
 	SpendingByCategory []*CategoryAmount `json:"spendingByCategory"`
+	// Spending per day, day 1 first; one entry for every day of the month
+	DailySpending []int `json:"dailySpending"`
 }
 
 type DatedAmount struct {
 	Date   time.Time `json:"date"`
 	Amount int       `json:"amount"`
+}
+
+// Price of 1 USD in the quote currency
+type FxRate struct {
+	Quote Currency  `json:"quote"`
+	Rate  float64   `json:"rate"`
+	Date  time.Time `json:"date"`
+}
+
+type FxStatus struct {
+	Source string `json:"source"`
+	// null until rates were fetched once
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	// Newest rate of each currency
+	Rates []*FxRate `json:"rates"`
 }
 
 // A savings goal tracked by a log of contributions
@@ -339,12 +359,15 @@ type Transaction struct {
 	CategoryID *string         `json:"categoryId,omitempty"`
 	Type       TransactionType `json:"type"`
 	// Minor units (cents), always positive
-	Amount      int       `json:"amount"`
-	Description string    `json:"description"`
-	Merchant    string    `json:"merchant"`
-	Notes       string    `json:"notes"`
-	Date        time.Time `json:"date"`
-	Tags        []*Tag    `json:"tags"`
+	Amount int `json:"amount"`
+	// Set when paid in another currency than the account's: what was entered, while amount is its value in the account's currency
+	OriginalAmount   *int      `json:"originalAmount,omitempty"`
+	OriginalCurrency *string   `json:"originalCurrency,omitempty"`
+	Description      string    `json:"description"`
+	Merchant         string    `json:"merchant"`
+	Notes            string    `json:"notes"`
+	Date             time.Time `json:"date"`
+	Tags             []*Tag    `json:"tags"`
 	// Empty unless the amount is divided across categories
 	Splits []*TransactionSplit `json:"splits"`
 }
@@ -438,13 +461,15 @@ type UpdateTransactionInput struct {
 	AccountID   *string `json:"accountId,omitempty"`
 	ToAccountID *string `json:"toAccountId,omitempty"`
 	// null clears it. Changing type to transfer clears it too
-	CategoryID  graphql.Omittable[*string] `json:"categoryId,omitempty"`
-	Type        *TransactionType           `json:"type,omitempty"`
-	Amount      *int                       `json:"amount,omitempty"`
-	Description *string                    `json:"description,omitempty"`
-	Merchant    *string                    `json:"merchant,omitempty"`
-	Notes       *string                    `json:"notes,omitempty"`
-	Date        *time.Time                 `json:"date,omitempty"`
+	CategoryID graphql.Omittable[*string] `json:"categoryId,omitempty"`
+	Type       *TransactionType           `json:"type,omitempty"`
+	Amount     *int                       `json:"amount,omitempty"`
+	// Currency of amount; omitted means the account's
+	Currency    *string    `json:"currency,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Merchant    *string    `json:"merchant,omitempty"`
+	Notes       *string    `json:"notes,omitempty"`
+	Date        *time.Time `json:"date,omitempty"`
 	// Replaces the whole set; [] clears it
 	TagIds []string `json:"tagIds,omitempty"`
 	// Replaces the whole set; [] clears it. Setting categoryId alone drops splits and vice versa

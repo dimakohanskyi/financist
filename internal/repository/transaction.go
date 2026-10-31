@@ -12,18 +12,21 @@ import (
 
 // transactionRow is the GORM mapping of the transactions table.
 type transactionRow struct {
-	ID          int64 `gorm:"primaryKey"`
-	AccountID   int64
-	ToAccountID *int64
-	CategoryID  *int64
-	Type        string
-	Amount      int64
-	Description string
-	Merchant    string
-	Notes       string
-	Date        time.Time
-	Tags        []tagRow   `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID" json:"-"`
-	Splits      []splitRow `gorm:"foreignKey:TransactionID" json:"-"`
+	ID               int64 `gorm:"primaryKey"`
+	AccountID        int64
+	ToAccountID      *int64
+	CategoryID       *int64
+	Type             string
+	Amount           int64
+	Description      string
+	Merchant         string
+	Notes            string
+	Date             time.Time
+	OriginalAmount   *int64
+	OriginalCurrency *string
+	Currency         string     `gorm:"->"` // read-only: accounts.currency, set by joins
+	Tags             []tagRow   `gorm:"many2many:transaction_tags;joinForeignKey:TransactionID;joinReferences:TagID" json:"-"`
+	Splits           []splitRow `gorm:"foreignKey:TransactionID" json:"-"`
 }
 
 func (transactionRow) TableName() string { return "transactions" }
@@ -40,16 +43,23 @@ type splitRow struct {
 func (splitRow) TableName() string { return "transaction_splits" }
 
 func toTransactionRow(t *model.Transaction) transactionRow {
+	var origAmount *int64
+	var origCurrency *string
+	if t.OriginalAmount > 0 {
+		origAmount, origCurrency = &t.OriginalAmount, &t.OriginalCurrency
+	}
 	return transactionRow{
-		ID:          t.ID,
-		AccountID:   t.AccountID,
-		ToAccountID: t.ToAccountID,
-		CategoryID:  t.CategoryID,
-		Type:        t.Type,
-		Amount:      t.Amount,
-		Description: t.Description,
-		Merchant:    t.Merchant,
-		Notes:       t.Notes,
+		OriginalAmount:   origAmount,
+		OriginalCurrency: origCurrency,
+		ID:               t.ID,
+		AccountID:        t.AccountID,
+		ToAccountID:      t.ToAccountID,
+		CategoryID:       t.CategoryID,
+		Type:             t.Type,
+		Amount:           t.Amount,
+		Description:      t.Description,
+		Merchant:         t.Merchant,
+		Notes:            t.Notes,
 		// stored as text, so one zone keeps date comparisons and ordering right
 		Date: t.Date.UTC(),
 	}
@@ -67,8 +77,12 @@ func (r transactionRow) toModel() model.Transaction {
 		Merchant:    r.Merchant,
 		Notes:       r.Notes,
 		Date:        r.Date,
+		Currency:    r.Currency,
 		Tags:        make([]model.Tag, len(r.Tags)),
 		Splits:      make([]model.TransactionSplit, len(r.Splits)),
+	}
+	if r.OriginalAmount != nil && r.OriginalCurrency != nil {
+		t.OriginalAmount, t.OriginalCurrency = *r.OriginalAmount, *r.OriginalCurrency
 	}
 	for i, tag := range r.Tags {
 		t.Tags[i] = model.Tag(tag)
@@ -238,14 +252,16 @@ func (r *TransactionRepo) Contributions(ctx context.Context, f model.Contributio
 	// two queries, not a UNION, so date keeps its column type and scans as time
 	var plain, split []model.Contribution
 	err := filter(r.db.WithContext(ctx).Table("transactions t").
-		Select("t.id AS transaction_id, t.category_id, t.amount, t.date").
+		Joins("JOIN accounts a ON a.id = t.account_id").
+		Select("t.id AS transaction_id, t.category_id, t.amount, a.currency, t.date").
 		Where("t.category_id IS NOT NULL")).Scan(&plain).Error
 	if err != nil {
 		return nil, err
 	}
 	err = filter(r.db.WithContext(ctx).Table("transaction_splits s").
 		Joins("JOIN transactions t ON t.id = s.transaction_id").
-		Select("s.transaction_id, s.category_id, s.amount, t.date").
+		Joins("JOIN accounts a ON a.id = t.account_id").
+		Select("s.transaction_id, s.category_id, s.amount, a.currency, t.date").
 		Where("s.category_id IS NOT NULL")).Scan(&split).Error
 	return append(plain, split...), err
 }
@@ -253,7 +269,9 @@ func (r *TransactionRepo) Contributions(ctx context.Context, f model.Contributio
 // Ledger returns every transaction without tags or splits, oldest first.
 func (r *TransactionRepo) Ledger(ctx context.Context) ([]model.Transaction, error) {
 	var rows []transactionRow
-	err := r.db.WithContext(ctx).Order("date, id").Find(&rows).Error
+	err := r.db.WithContext(ctx).Select("transactions.*, accounts.currency").
+		Joins("JOIN accounts ON accounts.id = transactions.account_id").
+		Order("transactions.date, transactions.id").Find(&rows).Error
 	out := make([]model.Transaction, len(rows))
 	for i, row := range rows {
 		out[i] = row.toModel()

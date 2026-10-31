@@ -33,7 +33,7 @@ export default function App() {
   }, [settings]);
 
   return (
-    <div className="flex min-h-screen bg-surface-0">
+    <div className="dusk flex min-h-screen bg-surface-0 text-text-primary">
       <Sidebar
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed(!collapsed)}

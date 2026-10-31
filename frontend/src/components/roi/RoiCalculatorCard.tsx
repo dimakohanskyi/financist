@@ -65,7 +65,7 @@ export function RoiCalculatorCard({
           <p className="text-xs text-text-muted">{t("roi.calculator.hint")}</p>
         ) : (
           <div className="rounded-lg bg-surface-2 p-3.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <p className="text-xs font-semibold text-text-muted">
               {t("roi.calculator.annualRoiLabel")}
             </p>
             <p

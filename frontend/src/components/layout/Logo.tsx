@@ -9,8 +9,8 @@ export function Logo({ size = 24, className }: LogoProps) {
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden="true">
       <defs>
         <linearGradient id="financistMark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#34d399" />
-          <stop offset="1" stopColor="#047857" />
+          <stop offset="0" style={{ stopColor: "var(--series-1)" }} />
+          <stop offset="1" style={{ stopColor: "var(--series-6)" }} />
         </linearGradient>
       </defs>
       <rect x="1" y="1" width="30" height="30" rx="7" fill="url(#financistMark)" />

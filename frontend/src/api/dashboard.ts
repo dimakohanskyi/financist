@@ -39,9 +39,9 @@ export function mapCategoryAmount(c: GqlCategoryAmount): CategoryBreakdownItem &
 /** accountId narrows to that account; omitted means every account. */
 export async function fetchDashboardSummary(year: number, month: number, accountId?: number): Promise<DashboardSummary> {
   const data = await gql<{
-    dashboard: { year: number; month: number; income: number; spent: number; net: number; transferredOut: number; spendingByCategory: GqlCategoryAmount[] };
+    dashboard: { year: number; month: number; income: number; spent: number; net: number; transferredOut: number; spendingByCategory: GqlCategoryAmount[]; dailySpending: number[] };
   }>(
-    `query($year: Int, $month: Int, $accountId: ID) { dashboard(year: $year, month: $month, accountId: $accountId) { year month income spent net transferredOut spendingByCategory { ${CATEGORY_AMOUNT_FIELDS} } } }`,
+    `query($year: Int, $month: Int, $accountId: ID) { dashboard(year: $year, month: $month, accountId: $accountId) { year month income spent net transferredOut spendingByCategory { ${CATEGORY_AMOUNT_FIELDS} } dailySpending } }`,
     { year, month, accountId }
   );
   const d = data.dashboard;
@@ -53,5 +53,6 @@ export async function fetchDashboardSummary(year: number, month: number, account
     net: fromCents(d.net),
     transferred_out: fromCents(d.transferredOut),
     spending_by_category: d.spendingByCategory.map(mapCategoryAmount),
+    daily_spending: d.dailySpending.map((cents) => cents / 100),
   };
 }

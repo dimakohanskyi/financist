@@ -20,6 +20,7 @@ type Contribution struct {
 	TransactionID int64
 	CategoryID    int64
 	Amount        int64
+	Currency      string
 	Date          time.Time
 }
 

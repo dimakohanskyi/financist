@@ -63,3 +63,27 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("zero amount accepted, err: %v", err)
 	}
 }
+
+type fakeRates struct{}
+
+func (fakeRates) Rates(context.Context) (model.Rates, error) {
+	return model.Rates{"EUR": {{Quote: "EUR", Rate: 0.5}}, "PLN": {{Quote: "PLN", Rate: 4}}}, nil
+}
+
+type plnAccounts struct{ fakeAccounts }
+
+func (plnAccounts) GetByID(context.Context, int64) (model.Account, error) {
+	return model.Account{Currency: "PLN"}, nil
+}
+
+func TestCreateForeignCurrency(t *testing.T) {
+	svc := NewTransactionService(fakeTxs{}, plnAccounts{}, fakeCategories{}).WithRates(fakeRates{})
+	tx := &model.Transaction{AccountID: 1, Type: model.TransactionExpense, Amount: 100, OriginalCurrency: "EUR"}
+	if err := svc.Create(context.Background(), tx); err != nil {
+		t.Fatal(err)
+	}
+	// 1.00 EUR = 8.00 PLN at 0.5 EUR and 4 PLN per USD
+	if tx.Amount != 800 || tx.OriginalAmount != 100 || tx.OriginalCurrency != "EUR" {
+		t.Fatalf("got %+v", tx)
+	}
+}

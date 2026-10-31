@@ -1,3 +1,4 @@
+import { getNativeCurrency, isConvertToUsd } from "@/lib/convertToUsd";
 import { useSyncExternalStore } from "react";
 
 export type Language = "ru" | "en";
@@ -57,10 +58,19 @@ const ru = {
   "dashboard.statSavingsRateLabel": "Норма сбережений",
   "dashboard.statSavingsRateCaption": "доля дохода, оставшаяся после расходов",
   "dashboard.spendingByCategoryTitle": "Расходы по категориям",
+  "dashboard.dailySpendingTitle": "Расходы по дням",
+  "dashboard.dailySpendingPeak": "Максимум",
+  "dashboard.dailySpendingTotal": "Всего",
+  "dashboard.dailySpendingAverage": "В среднем за день",
   "dashboard.noExpensesThisMonth": "За этот месяц пока нет расходов. Добавьте первую транзакцию на вкладке «Транзакции».",
   "dashboard.recentTransactionsTitle": "Последние транзакции",
   "dashboard.allTransactionsLink": "Все транзакции",
   "dashboard.noTransactionsYet": "Транзакций пока нет.",
+  "dashboard.colDate": "Дата",
+  "dashboard.colDescription": "Описание",
+  "dashboard.colAccount": "Счёт",
+  "dashboard.colCategory": "Категория",
+  "dashboard.colAmount": "Сумма",
 
   "netWorth.periodSuffix": "за период",
   "netWorth.noChartData": "Пока нет данных для графика.",
@@ -209,6 +219,7 @@ const ru = {
   "transactions.form.typeIncome": "Доход",
   "transactions.form.typeTransfer": "Перевод",
   "transactions.form.amountLabel": "Сумма",
+  "transactions.form.currencyLabel": "Валюта",
   "transactions.form.dateLabel": "Дата",
   "transactions.form.descriptionLabel": "Описание",
   "transactions.form.descriptionPlaceholder": "Продукты, зарплата, аренда…",
@@ -272,6 +283,15 @@ const ru = {
   "settings.currency": "Основная валюта",
   "settings.currencyHint":
     "Меняет только отображение сумм — уже введённые значения не пересчитываются и не конвертируются.",
+  "settings.fxTitle": "Курсы валют",
+  "settings.fxSource": "Источник: {source}",
+  "settings.fxUpdated": "обновлено: {date}",
+  "settings.fxNever": "ещё не загружались",
+  "settings.fxRefresh": "Обновить курсы",
+  "settings.fxRefreshing": "Обновляем…",
+  "settings.fxError": "Не удалось обновить курсы",
+  "settings.fxHint": "Курсы нужны для сводок в USD. Если сеть недоступна, сохраняются последние загруженные.",
+  "dashboard.convertToUsd": "В USD",
   "settings.alertsTitle": "Проактивные предупреждения",
   "settings.alertsHint": "Через сколько месяцев подряд показывать предупреждение на Dashboard и «Капитал».",
   "settings.negativeCashFlowThresholdLabel": "Расходы превышают доходы, мес. подряд",
@@ -496,10 +516,19 @@ const en: Record<keyof typeof ru, string> = {
   "dashboard.statSavingsRateLabel": "Savings rate",
   "dashboard.statSavingsRateCaption": "share of income left after spending",
   "dashboard.spendingByCategoryTitle": "Spending by category",
+  "dashboard.dailySpendingTitle": "Daily spending",
+  "dashboard.dailySpendingPeak": "Peak day",
+  "dashboard.dailySpendingTotal": "Total",
+  "dashboard.dailySpendingAverage": "Average per day",
   "dashboard.noExpensesThisMonth": "No expenses yet this month. Add your first transaction on the Transactions tab.",
   "dashboard.recentTransactionsTitle": "Recent transactions",
   "dashboard.allTransactionsLink": "All transactions",
   "dashboard.noTransactionsYet": "No transactions yet.",
+  "dashboard.colDate": "Date",
+  "dashboard.colDescription": "Description",
+  "dashboard.colAccount": "Account",
+  "dashboard.colCategory": "Category",
+  "dashboard.colAmount": "Amount",
 
   "netWorth.periodSuffix": "over period",
   "netWorth.noChartData": "No data for the chart yet.",
@@ -648,6 +677,7 @@ const en: Record<keyof typeof ru, string> = {
   "transactions.form.typeIncome": "Income",
   "transactions.form.typeTransfer": "Transfer",
   "transactions.form.amountLabel": "Amount",
+  "transactions.form.currencyLabel": "Currency",
   "transactions.form.dateLabel": "Date",
   "transactions.form.descriptionLabel": "Description",
   "transactions.form.descriptionPlaceholder": "Groceries, salary, rent…",
@@ -711,6 +741,15 @@ const en: Record<keyof typeof ru, string> = {
   "settings.currency": "Primary currency",
   "settings.currencyHint":
     "Only changes how amounts are displayed — values you've already entered aren't recalculated or converted.",
+  "settings.fxTitle": "Exchange rates",
+  "settings.fxSource": "Source: {source}",
+  "settings.fxUpdated": "updated: {date}",
+  "settings.fxNever": "never fetched",
+  "settings.fxRefresh": "Refresh rates",
+  "settings.fxRefreshing": "Refreshing…",
+  "settings.fxError": "Couldn't refresh rates",
+  "settings.fxHint": "Rates are used for USD totals. If offline, the last fetched rates are kept.",
+  "dashboard.convertToUsd": "Convert to USD",
   "settings.alertsTitle": "Proactive alerts",
   "settings.alertsHint": "How many consecutive months before showing a warning on Dashboard and Net Worth.",
   "settings.negativeCashFlowThresholdLabel": "Expenses exceed income, consecutive months",
@@ -909,7 +948,8 @@ export function setLanguage(language: Language): void {
 }
 
 export function getCurrency(): string {
-  return currentCurrency;
+  // amounts come back in USD unless the dashboard shows a single account as is
+  return isConvertToUsd() ? "USD" : (getNativeCurrency() ?? currentCurrency);
 }
 
 /** Updates the reactive local mirror only — call this after the server

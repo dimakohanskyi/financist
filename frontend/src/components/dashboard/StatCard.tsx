@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -6,6 +5,9 @@ interface StatCardProps {
   value: string;
   caption: string;
   tone?: "default" | "success" | "danger";
+  /** The one figure the screen leads with. */
+  hero?: boolean;
+  loading?: boolean;
 }
 
 const TONE_CLASSES: Record<NonNullable<StatCardProps["tone"]>, string> = {
@@ -14,14 +16,19 @@ const TONE_CLASSES: Record<NonNullable<StatCardProps["tone"]>, string> = {
   danger: "text-danger",
 };
 
-export function StatCard({ label, value, caption, tone = "default" }: StatCardProps) {
+// One cell of the summary strip. The strip draws the rules between cells.
+export function StatCard({ label, value, caption, tone = "default", hero, loading }: StatCardProps) {
   return (
-    <Card className="p-4 sm:p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</p>
-      <p className={cn("mt-1.5 text-2xl font-semibold tabular-nums sm:text-[28px]", TONE_CLASSES[tone])}>
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-text-muted">{caption}</p>
-    </Card>
+    <div className="min-w-0 px-4 py-4 first:pl-0">
+      <p className="text-sm text-text-secondary">{label}</p>
+      {loading ? (
+        <div className={cn("mt-1 motion-safe:animate-pulse rounded bg-surface-2", hero ? "h-12 w-44" : "h-8 w-24")} />
+      ) : (
+        <p className={cn("font-display mt-1 tabular-nums", hero ? "text-5xl" : "text-2xl", TONE_CLASSES[tone])}>
+          {value}
+        </p>
+      )}
+      <p className="mt-0.5 text-xs text-text-muted">{caption}</p>
+    </div>
   );
 }

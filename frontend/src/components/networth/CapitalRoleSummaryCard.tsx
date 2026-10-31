@@ -30,7 +30,7 @@ export function CapitalRoleSummaryCard({ roles, isLoading }: CapitalRoleSummaryC
               const cashFlow = Number(role.monthly_cash_flow);
               return (
                 <div key={role.role} className="rounded-lg border border-border p-3.5">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-text-muted">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: role.color }} />
                     {t(`netWorth.capitalRole.${role.role}` as TranslationKey)}
                   </p>

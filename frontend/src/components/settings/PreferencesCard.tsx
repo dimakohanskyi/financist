@@ -25,13 +25,13 @@ export function PreferencesCard() {
     <Card>
       <CardContent className="grid grid-cols-1 gap-5 divide-y divide-border pt-4 sm:grid-cols-2 sm:gap-6 sm:divide-x sm:divide-y-0 sm:pt-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t("settings.language")}</p>
+          <p className="text-xs font-semibold text-text-muted">{t("settings.language")}</p>
           <div className="mt-2">
             <PillSelector options={languageOptions} value={language} onChange={setLanguage} />
           </div>
         </div>
         <div className="pt-5 sm:pl-6 sm:pt-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t("settings.theme")}</p>
+          <p className="text-xs font-semibold text-text-muted">{t("settings.theme")}</p>
           <div className="mt-2">
             <PillSelector options={themeOptions} value={theme} onChange={setTheme} />
           </div>

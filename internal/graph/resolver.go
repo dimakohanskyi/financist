@@ -26,6 +26,7 @@ type Resolver struct {
 	AssetRepo    *repository.AssetRepo
 	SettingsRepo *repository.SettingsRepo
 	Reports      *service.ReportService
+	Fx           *service.FxService
 }
 
 // category loads a category for a nested field. ponytail: one query per

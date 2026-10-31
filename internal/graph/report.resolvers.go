@@ -33,6 +33,10 @@ func (r *queryResolver) Dashboard(ctx context.Context, year *int32, month *int32
 	if err != nil {
 		return nil, err
 	}
+	daily := make([]int, len(d.DailySpending))
+	for i, v := range d.DailySpending {
+		daily[i] = int(v)
+	}
 	return &model.Dashboard{
 		Year:               int32(d.Year),
 		Month:              int32(d.Month),
@@ -41,6 +45,7 @@ func (r *queryResolver) Dashboard(ctx context.Context, year *int32, month *int32
 		Net:                int(d.Income - d.Spent),
 		TransferredOut:     int(d.TransferredOut),
 		SpendingByCategory: toCategoryAmounts(d.SpendingByCategory),
+		DailySpending:      daily,
 	}, nil
 }
 

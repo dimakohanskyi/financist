@@ -1,8 +1,5 @@
-import { useState } from "react";
-import { SquareDivide } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { CategoryBreakdownModal } from "@/components/categories/CategoryBreakdownModal";
 import { getCategoryIcon } from "@/lib/icons";
 import { formatCurrency } from "@/lib/format";
 import { useTranslation } from "@/lib/i18n";
@@ -11,118 +8,112 @@ import type { CategoryBreakdownItem } from "@/types";
 
 interface SpendingByCategoryCardProps {
   items: CategoryBreakdownItem[];
+  loading?: boolean;
 }
 
-function DonutTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: CategoryBreakdownItem }> }) {
-  if (!active || !payload?.length) return null;
-  const item = payload[0].payload;
-  return (
-    <div className="rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm shadow-md">
-      <p className="font-medium text-text-primary">{translateCategoryName(item.name)}</p>
-      <p className="text-text-secondary">
-        {formatCurrency(item.amount)} · {item.percent.toFixed(1)}%
-      </p>
-    </div>
-  );
-}
+// Chevron, icon and name, percent, amount.
+const ROW_GRID =
+  "grid grid-cols-[1rem_minmax(0,1fr)_3rem_6.5rem] items-center gap-3";
 
-export function SpendingByCategoryCard({ items }: SpendingByCategoryCardProps) {
+export function SpendingByCategoryCard({
+  items,
+  loading,
+}: SpendingByCategoryCardProps) {
   const { t } = useTranslation();
-  // The breakdown lives in a modal, not expanded inline — a category with
-  // many subcategories (or many split purchases) would otherwise push this
-  // row taller than the fixed-height donut next to it, throwing the
-  // side-by-side layout out of alignment.
-  const [breakdownItem, setBreakdownItem] = useState<CategoryBreakdownItem | null>(null);
   const hasData = items.length > 0;
-  // Recharts needs a numeric dataKey — API amounts arrive as strings (Decimal
-  // is serialized as string to avoid float precision loss).
-  const chartData = items.map((item) => ({ ...item, amount: Number(item.amount) }));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("dashboard.spendingByCategoryTitle")}</CardTitle>
+        <CardTitle className="text-sm font-medium normal-case tracking-normal text-text-secondary">{t("dashboard.spendingByCategoryTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
-        {!hasData ? (
-          <p className="py-10 text-center text-sm text-text-muted">{t("dashboard.noExpensesThisMonth")}</p>
+        {loading ? (
+          <div className="h-40 motion-safe:animate-pulse rounded bg-surface-2" />
+        ) : !hasData ? (
+          <p className="py-10 text-center text-sm text-text-muted">
+            {t("dashboard.noExpensesThisMonth")}
+          </p>
         ) : (
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-            <div className="h-56 w-56 shrink-0 sm:h-64 sm:w-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    dataKey="amount"
-                    nameKey="name"
-                    innerRadius="62%"
-                    outerRadius="100%"
-                    paddingAngle={2}
-                    stroke="var(--surface-1)"
-                    strokeWidth={2}
-                    isAnimationActive={false}
-                  >
-                    {items.map((item) => (
-                      <Cell key={item.category_id ?? "other"} fill={item.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<DonutTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <ul className="w-full min-w-0 flex-1 divide-y divide-gridline">
+          <>
+            <ul className="divide-y divide-gridline">
               {items.map((item) => {
                 const Icon = getCategoryIcon(item.icon);
-                const hasChildren = item.children.length > 0;
-                return (
-                  <li key={item.category_id ?? "other"} className="flex items-center gap-2 py-2 first:pt-0 last:pb-0">
-                    {/* Fixed-width slot on every row, populated or not — the
-                        amount column at the row's end must stay flush right
-                        the same way whether or not this row has a
-                        breakdown to open. */}
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                      {hasChildren && (
-                        <button
-                          type="button"
-                          aria-label={t("common.expand")}
-                          onClick={() => setBreakdownItem(item)}
-                          className="rounded-md p-0.5 text-text-muted hover:bg-surface-2 hover:text-text-primary"
-                        >
-                          <SquareDivide size={15} />
-                        </button>
+                const children = item.children;
+                const row = (
+                  <>
+                    <span className="flex h-4 w-4 items-center justify-center text-text-muted">
+                      {children.length > 0 && (
+                        <ChevronRight
+                          size={14}
+                          className="transition-transform group-open:rotate-90"
+                        />
                       )}
                     </span>
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                      style={{ backgroundColor: `${item.color}26` }}
-                    >
-                      <Icon size={14} style={{ color: item.color }} />
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-text-muted">
+                        <Icon size={13} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-text-primary">
+                          {translateCategoryName(item.name)}
+                        </span>
+                        <span className="mt-1.5 block h-1 rounded-full bg-surface-2">
+                          <span
+                            className="block h-full rounded-full bg-series-1"
+                            style={{ width: `${item.percent}%` }}
+                          />
+                        </span>
+                      </span>
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
-                      {translateCategoryName(item.name)}
+                    <span className="text-right text-xs tabular-nums text-text-muted">
+                      {item.percent.toFixed(0)}%
                     </span>
-                    <span className="shrink-0 text-sm font-medium tabular-nums text-text-primary">
+                    <span className="text-right text-sm font-medium tabular-nums text-text-primary">
                       {formatCurrency(item.amount)}
                     </span>
+                  </>
+                );
+                return (
+                  <li key={item.category_id ?? "other"}>
+                    {children.length === 0 ? (
+                      <div className={`${ROW_GRID} py-2.5`}>{row}</div>
+                    ) : (
+                      <details className="group">
+                        <summary
+                          className={`${ROW_GRID} cursor-pointer list-none py-2.5 [&::-webkit-details-marker]:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-series-1`}
+                        >
+                          {row}
+                        </summary>
+                        <ul className="mb-2 ml-7 space-y-1.5 border-l border-gridline pl-3">
+                          {children.map((child) => (
+                            <li
+                              key={child.category_id}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
+                              <span className="flex min-w-0 items-center gap-2 text-text-secondary">
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-text-muted" />
+                                <span className="truncate">
+                                  {child.category_id === item.category_id
+                                    ? t("reports.directSpendLabel")
+                                    : translateCategoryName(child.name)}
+                                </span>
+                              </span>
+                              <span className="tabular-nums text-text-primary">
+                                {formatCurrency(child.amount)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
                   </li>
                 );
               })}
             </ul>
-          </div>
+          </>
         )}
       </CardContent>
-
-      {breakdownItem && breakdownItem.category_id !== null && (
-        <CategoryBreakdownModal
-          open
-          onClose={() => setBreakdownItem(null)}
-          categoryId={breakdownItem.category_id}
-          categoryName={breakdownItem.name}
-          totalAmount={breakdownItem.amount}
-          children={breakdownItem.children}
-        />
-      )}
     </Card>
   );
 }

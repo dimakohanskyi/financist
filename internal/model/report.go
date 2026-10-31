@@ -17,6 +17,7 @@ type Dashboard struct {
 	Spent              int64
 	TransferredOut     int64
 	SpendingByCategory []CategoryAmount
+	DailySpending      []int64 // index 0 is day 1
 }
 
 type CashFlowMonth struct {

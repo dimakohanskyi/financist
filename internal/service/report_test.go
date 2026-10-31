@@ -47,6 +47,9 @@ func TestReports(t *testing.T) {
 	if err != nil || d.Spent != 500 || d.TransferredOut != 1000 || len(d.SpendingByCategory) != 1 || len(d.SpendingByCategory[0].Children) != 2 {
 		t.Fatalf("dashboard %+v, err %v", d, err)
 	}
+	if days := len(d.DailySpending); days < 28 || d.DailySpending[now.Day()-1] != 500 {
+		t.Fatalf("daily spending %v", d.DailySpending)
+	}
 	// the card only received a transfer: no income, no spending
 	d, err = svc.Dashboard(ctx, now.Year(), int(now.Month()), &card)
 	if err != nil || d.Income != 0 || d.Spent != 0 || d.TransferredOut != 0 || len(d.SpendingByCategory) != 0 {
