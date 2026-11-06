@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -41,7 +42,7 @@ export function BackupCard() {
     event.target.value = "";
     if (!file) return;
 
-    const confirmed = window.confirm(t("backup.confirmImport", { filename: file.name }));
+    const confirmed = await confirmAction(t("backup.confirmImport", { filename: file.name }));
     if (!confirmed) return;
 
     setIsImporting(true);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -39,7 +40,7 @@ export function CategoriesPage() {
   }
 
   async function handleDelete(category: Category) {
-    if (!window.confirm(t("category.confirmDelete", { name: category.name }))) return;
+    if (!await confirmAction(t("category.confirmDelete", { name: category.name }))) return;
     try {
       await deleteCategory.mutateAsync(category.id);
     } catch {

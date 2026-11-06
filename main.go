@@ -49,6 +49,15 @@ func (a *App) ExportBackup() (bool, error) {
 	return true, os.WriteFile(path, data, 0o600)
 }
 
+// Confirm shows a native yes/no dialog: WKWebView has no window.confirm, so it would always return false.
+func (a *App) Confirm(message string) bool {
+	res, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type: runtime.QuestionDialog, Title: "Financist", Message: message,
+		Buttons: []string{"Yes", "No"}, DefaultButton: "No", CancelButton: "No",
+	})
+	return err == nil && res == "Yes"
+}
+
 func main() {
 	configs.LogerSetUp(os.Getenv("LOG_LEVEL"))
 

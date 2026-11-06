@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -44,8 +45,8 @@ export function BudgetPage() {
     setModalOpen(true);
   }
 
-  function handleDelete(item: BudgetStatus) {
-    if (window.confirm(t("budget.confirmDelete", { name: translateCategoryName(item.category_name) }))) {
+  async function handleDelete(item: BudgetStatus) {
+    if (await confirmAction(t("budget.confirmDelete", { name: translateCategoryName(item.category_name) }))) {
       deleteBudget.mutate(item.budget_id);
     }
   }

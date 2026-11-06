@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Label, Select } from "@/components/ui/Input";
@@ -79,8 +80,8 @@ export function ReportsPage() {
     setModalOpen(true);
   }
 
-  function handleDelete(transaction: Transaction) {
-    if (window.confirm(t("transactions.confirmDelete", { description: transaction.description }))) {
+  async function handleDelete(transaction: Transaction) {
+    if (await confirmAction(t("transactions.confirmDelete", { description: transaction.description }))) {
       deleteTransaction.mutate(transaction.id);
     }
   }

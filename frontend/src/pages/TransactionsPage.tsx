@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Link, useSearchParams } from "react-router-dom";
 import { FileUp, Plus, Search, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -106,8 +107,8 @@ export function TransactionsPage() {
     setModalOpen(true);
   }
 
-  function handleDelete(transaction: Transaction) {
-    if (window.confirm(t("transactions.confirmDelete", { description: transaction.description }))) {
+  async function handleDelete(transaction: Transaction) {
+    if (await confirmAction(t("transactions.confirmDelete", { description: transaction.description }))) {
       deleteTransaction.mutate(transaction.id);
     }
   }

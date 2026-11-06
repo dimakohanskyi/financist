@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -34,8 +35,8 @@ export function GoalsPage() {
     setContributionOpen(true);
   }
 
-  function handleDelete(goal: Goal) {
-    if (window.confirm(t("goal.confirmDelete", { name: goal.name }))) {
+  async function handleDelete(goal: Goal) {
+    if (await confirmAction(t("goal.confirmDelete", { name: goal.name }))) {
       deleteGoal.mutate(goal.id);
     }
   }

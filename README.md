@@ -24,7 +24,9 @@ Everything is stored locally in a single SQLite file:
 ~/Library/Application Support/Financist/financist.db
 ```
 
-Back it up or move it by copying that file.
+On Windows: `%AppData%\Financist\financist.db`.
+
+Back it up or move it by copying that file, or use Export / Import Backup in Settings.
 
 ## Install (macOS)
 
@@ -37,6 +39,18 @@ make install   # builds the app and copies it to /Applications/Financist.app
 ```
 
 Other commands: `make dev` (live-reload dev mode), `make app` (build only → `build/bin/Financist.app`).
+
+## Install (Windows)
+
+Not tested on Windows yet. Requirements: [Go](https://go.dev/dl/), [Node.js](https://nodejs.org/) and [Wails v2](https://wails.io/docs/gettingstarted/installation) (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`). Windows 10 also needs the [WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (already included in Windows 11).
+
+```powershell
+git clone https://github.com/dimakohanskyi/financist.git
+cd financist
+wails build -clean
+```
+
+Run `build\bin\Financist.exe`. To get an installer instead, install [NSIS](https://nsis.sourceforge.io/) and run `wails build -clean -nsis`.
 
 ## Tech
 

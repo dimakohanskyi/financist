@@ -2,5 +2,5 @@
 
 interface Window {
   /** Wails bindings; absent when running in a plain browser. */
-  go?: { main: { App: { ExportBackup(): Promise<boolean> } } };
+  go?: { main: { App: { ExportBackup(): Promise<boolean>; Confirm(message: string): Promise<boolean> } } };
 }

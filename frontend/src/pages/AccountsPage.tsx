@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -32,8 +33,8 @@ export function AccountsPage() {
     updateAccount.mutate({ id: account.id, input: { is_archived: !account.is_archived } });
   }
 
-  function handleDelete(account: AccountWithBalance) {
-    if (window.confirm(t("account.confirmDelete", { name: account.name }))) {
+  async function handleDelete(account: AccountWithBalance) {
+    if (await confirmAction(t("account.confirmDelete", { name: account.name }))) {
       deleteAccount.mutate(account.id);
     }
   }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -37,8 +38,8 @@ export function NetWorthPage() {
     setModalOpen(true);
   }
 
-  function handleDelete(asset: Asset) {
-    if (window.confirm(t("netWorth.confirmDeleteAsset", { name: asset.name }))) {
+  async function handleDelete(asset: Asset) {
+    if (await confirmAction(t("netWorth.confirmDeleteAsset", { name: asset.name }))) {
       deleteAsset.mutate(asset.id);
     }
   }

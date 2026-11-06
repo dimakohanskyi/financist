@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmAction } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -27,8 +28,8 @@ export function RecurringPage() {
     setModalOpen(true);
   }
 
-  function handleDelete(item: RecurringTransaction) {
-    if (window.confirm(t("recurring.confirmDelete", { name: item.description }))) {
+  async function handleDelete(item: RecurringTransaction) {
+    if (await confirmAction(t("recurring.confirmDelete", { name: item.description }))) {
       deleteRecurring.mutate(item.id);
     }
   }
